@@ -11,10 +11,12 @@ import httpx
 from pipeline import drex, metrics, settings
 from pipeline.books import norm
 
-BOOK_NEW_Q = ("Is listing {L} a new physical copy of exactly this book (same title and author; any binding)? An ebook, "
-              "Kindle, audiobook, summary, study guide, graphic adaptation, different volume or multi-book set means no.")
-BOOK_USED_Q = ("Is listing {L} a used physical copy of exactly this book (same title and author)? An ebook, audiobook, "
-               "summary, different volume, lot or multi-book set means no.")
+BOOK_NEW_Q = ("Is listing {L} a new physical copy of exactly this book (same title and author, same language as the "
+              "title read from the spine; any binding)? A translation into another language, an ebook, Kindle, "
+              "audiobook, summary, study guide, graphic adaptation, different volume or multi-book set means no.")
+BOOK_USED_Q = ("Is listing {L} a used physical copy of exactly this book (same title and author, same language as the "
+               "title read from the spine)? A translation, ebook, audiobook, summary, different volume, lot or "
+               "multi-book set means no.")
 ITEM_BRAND_Q = "Is listing {L} a new unit of the same brand and model as the item being priced?"
 ITEM_GENERIC_Q = ("Is listing {L} a new product of the same kind and similar size and material as the item being "
                   "priced, so that it is a fair replacement for insurance purposes? Accessories or parts mean no.")
@@ -127,7 +129,7 @@ class Pricer:
         res = self.shopping(f"{title} {last} book".strip(), loc["gl"])
         offers = [{"amount": a, "retailer": x.get("source", ""), "url": x.get("link", ""), "title": x.get("title", "")}
                   for x in res["results"]
-                  if not not_the_book(x.get("title", ""))
+                  if x.get("link") and not not_the_book(x.get("title", ""))
                   and (a := parse_price(x.get("price"), loc["symbols"]))]
         return self.matching({"title": title, "author": author}, offers, BOOK_NEW_Q), res["retrieved_at"]
 
@@ -166,7 +168,7 @@ class Pricer:
         res = self.ebay_used(f"{title} {last}".strip(), market)
         offers = [{"amount": float(x["price"]["value"]), "currency": x["price"]["currency"],
                    "url": x.get("itemWebUrl", ""), "title": x.get("title", ""), "condition": x.get("condition", "")}
-                  for x in res["results"] if x.get("price")
+                  for x in res["results"] if x.get("price") and x.get("itemWebUrl")
                   and not not_the_book(x.get("title", ""))]
         offers = self.matching({"title": title, "author": author}, offers, BOOK_USED_Q)
         if not offers:
@@ -189,7 +191,7 @@ class Pricer:
             q = f"{item['description']} framed print"
         res = self.shopping(q, loc["gl"])
         offers = [{"amount": a, "retailer": x.get("source", ""), "url": x.get("link", ""), "title": x.get("title", "")}
-                  for x in res["results"] if (a := parse_price(x.get("price"), loc["symbols"]))]
+                  for x in res["results"] if x.get("link") and (a := parse_price(x.get("price"), loc["symbols"]))]
         subject = {k: item[k] for k in ("category", "description", "material", "brand_model", "dimensions_cm")}
         offers = self.matching(subject, offers, ITEM_BRAND_Q if item["brand_model"] else ITEM_GENERIC_Q)
         if not offers:
