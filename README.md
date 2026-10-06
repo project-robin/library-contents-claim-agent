@@ -17,7 +17,7 @@ accounts for Gemini, Serper and Modal (eBay is optional).
 ```bash
 git clone <repo> && cd <repo>
 uv sync                                   # Python 3.12 + deps; no torch locally
-cp .env.example .env                      # add GEMINI_API_KEY, SERPER_API_KEY (+ eBay)
+cp .env.example .env                      # add GEMINI_API_KEY, SERPER_API_KEY, DREX_API_KEY (+ eBay)
 uv run modal token new                    # once, opens browser
 uv run modal deploy gpu/modal_recon.py    # GPU reconstruction service (first build ~5 min)
 uv run python -m pipeline.marker          # -> assets/aruco_markers_A4.pdf

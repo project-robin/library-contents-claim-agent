@@ -12,12 +12,15 @@ import cv2
 import httpx
 import numpy as np
 
-from pipeline import settings, vision
+from concurrent.futures import ThreadPoolExecutor
+
+from pipeline import drex, settings, vision
 from pipeline.geometry import box_px
 
 LEG_W = {"full": 2, "partial": 1, "none": 0}
-APPRAISAL_WORDS = ("signed", "first edition", "1st edition", "limited", "leather", "gilt", "antique", "rare",
-                   "old binding", "inscribed", "original")
+SAME_WORK_Q = ("Is catalogue candidate {c} the same book (same work) as the text read from the spine? Spine text may be "
+               "partial, abbreviated or show only the author's surname. A different volume number, a different work by "
+               "the same author, or a guess that the spine text does not support means no.")
 
 
 def norm(s):
@@ -182,11 +185,23 @@ def shelf_run_m(books):
 
 # ---------- catalogue ----------
 
+VOLUME = re.compile(r"[\s,.:;]+((vol(ume)?|band|bd|tome|book|part|teil)\.?\s*)?([ivxlc]+|\d{1,3})\.?$", re.I)
+
+
+def search_terms(title, author):
+    """Spines carry volume markers ('In Nacht und Eis II') and punctuation ('Hofstadter:') that break catalogue search.
+    Search the work; DREX later judges whether the volume fits."""
+    t = VOLUME.sub("", title.strip()).strip(" ,.:;-") or title
+    a = re.sub(r"[^\w\s.'-]", " ", author).strip()
+    return t, re.sub(r"\s+", " ", a)
+
+
 def _gbooks(title, author):
     q = f"intitle:{title}" + (f" inauthor:{author}" if author else "")
     params = {"q": q, "maxResults": 5, "printType": "books"}
-    if settings.GOOGLE_BOOKS_API_KEY:
-        params["key"] = settings.GOOGLE_BOOKS_API_KEY
+    key = settings.GOOGLE_BOOKS_API_KEY or settings.GEMINI_API_KEY  # same Google Cloud project once Books API is on
+    if key:
+        params["key"] = key
     r = httpx.get("https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
     out = []
     for it in r.json().get("items", []) if r.status_code == 200 else []:
@@ -199,10 +214,12 @@ def _gbooks(title, author):
 
 
 def _openlibrary(title, author):
-    params = {"title": title, "limit": 5, "fields": "title,subtitle,author_name,publisher,first_publish_year,isbn,key"}
-    if author:
-        params["author"] = author
-    r = httpx.get("https://openlibrary.org/search.json", params=params, timeout=15)
+    fields = "title,subtitle,author_name,publisher,first_publish_year,isbn,key"
+    params = {"title": title, "limit": 5, "fields": fields} | ({"author": author} if author else {})
+    r = httpx.get("https://openlibrary.org/search.json", params=params, timeout=20)
+    if r.status_code == 200 and not r.json().get("docs"):  # fall back to free text
+        r = httpx.get("https://openlibrary.org/search.json", timeout=20,
+                      params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
     out = []
     for d in r.json().get("docs", []) if r.status_code == 200 else []:
         isbn = next((i for i in d.get("isbn", []) if len(i) == 13), "")
@@ -222,19 +239,28 @@ def score(read_title, read_author, agreement, cand):
     return round(0.65 * t + 0.2 * a + 0.15 * agreement, 3)
 
 
-def resolve(title, author, agreement, cache):
-    key = f"{norm(title)}|{norm(author)}"
+def resolve(title, author, publisher, agreement, cache):
+    """Catalogue lookup, then DREX gives a calibrated P(same work) per candidate. id_confidence = the best one."""
+    key = f"{norm(title)}|{norm(author)}|{norm(publisher)}|{agreement:.2f}"
     if key not in cache:
-        cands = _gbooks(title, author)
-        best = max((score(title, author, agreement, c) for c in cands), default=0)
-        if best < 0.8:
-            cands += _openlibrary(title, author)
-        cache[key] = cands
-    cands = cache[key]
+        st, sa = search_terms(title, author)
+        cands = _gbooks(st, sa)
+        if max((score(title, author, agreement, c) for c in cands), default=0) < 0.8:
+            cands += _openlibrary(st, sa)
+        cands = cands[:8]
+        probs = {}
+        if cands:
+            state = {"spine_text_read": {"title": title, "author": author, "publisher": publisher},
+                     "share_of_independent_reads_agreeing": round(agreement, 2),
+                     "catalogue_candidates": {f"c{i}": {k: c[k] for k in ("title", "subtitle", "authors", "publisher", "year")}
+                                              for i, c in enumerate(cands)}}
+            probs = drex.ask(state, {f"c{i}": SAME_WORK_Q.format(c=f"c{i}") for i in range(len(cands))})
+        cache[key] = {"cands": cands, "probs": probs}
+    cands, probs = cache[key]["cands"], cache[key]["probs"]
     if not cands:
         return None, 0.0
-    best = max(cands, key=lambda c: score(title, author, agreement, c))
-    return best, score(title, author, agreement, best)
+    i = max(range(len(cands)), key=lambda i: probs.get(f"c{i}", 0))
+    return cands[i], round(probs.get(f"c{i}", 0.0), 3)
 
 
 # ---------- stage ----------
@@ -279,10 +305,11 @@ def run(sweep_dir, reads, geo):
 
     cache_p = sweep_dir / "catalog_cache.json"
     cache = json.loads(cache_p.read_text()) if cache_p.exists() else {}
+    votes = [vote(c["texts"]) for c in clusters]
+    with ThreadPoolExecutor(8) as ex:  # ponytail: shared cache dict, distinct keys per book
+        resolved = list(ex.map(lambda v: resolve(v[0], v[1], v[2], v[3], cache) if v[0] else (None, 0.0), votes))
     books = []
-    for c in clusters:
-        title, author, publisher, agreement = vote(c["texts"])
-        cand, conf = resolve(title, author, agreement, cache) if title else (None, 0.0)
+    for c, (title, author, publisher, agreement), (cand, conf) in zip(clusters, votes, resolved):
         hs = [m["height_cm"] for m in c["members"] if "height_cm" in m]
         ts = [m["thickness_cm"] for m in c["members"] if "thickness_cm" in m]
         marks = sorted({x for m in c["members"] for x in m["marks"]})
@@ -302,7 +329,6 @@ def run(sweep_dir, reads, geo):
             "spine_height_cm": round(float(np.median(hs)), 1) if hs else None,
             "spine_thickness_cm": round(float(np.median(ts)), 1) if ts else None,
             "marks": marks, "notes": notes,
-            "appraisal_reasons": [x for x in marks + notes if any(w in x.lower() for w in APPRAISAL_WORDS)],
             "excluded": c.get("excluded", ""),
             "_center": [round(float(v), 3) for v in c["center"]],
         })

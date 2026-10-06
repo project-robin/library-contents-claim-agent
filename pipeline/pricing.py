@@ -8,8 +8,18 @@ from datetime import datetime, timezone
 
 import httpx
 
-from pipeline import metrics, settings
+from pipeline import drex, metrics, settings
 from pipeline.books import norm
+
+BOOK_NEW_Q = ("Is listing {L} a new physical copy of exactly this book (same title and author; any binding)? An ebook, "
+              "Kindle, audiobook, summary, study guide, graphic adaptation, different volume or multi-book set means no.")
+BOOK_USED_Q = ("Is listing {L} a used physical copy of exactly this book (same title and author)? An ebook, audiobook, "
+               "summary, different volume, lot or multi-book set means no.")
+ITEM_BRAND_Q = "Is listing {L} a new unit of the same brand and model as the item being priced?"
+ITEM_GENERIC_Q = ("Is listing {L} a new product of the same kind and similar size and material as the item being "
+                  "priced, so that it is a fair replacement for insurance purposes? Accessories or parts mean no.")
+APPRAISAL_Q = ("Does the evidence for book {id} indicate the copy may be rare, signed, a first or limited edition, "
+               "antiquarian or otherwise worth more than an ordinary copy, so a human appraiser should value it?")
 
 NOT_THE_BOOK = ("kindle", "ebook", "e book", "audiobook", "audio cd", "audible", "box set", "boxed set", "set of",
                 "combo", "summary of", "study guide", "workbook for", "poster", "bookmark", "t shirt", "mug")
@@ -30,13 +40,10 @@ def parse_price(s, symbols):
     return float(m.group().replace(",", "")) if m else None
 
 
-def title_matches(want, got):
-    """All significant words of the wanted title appear in the listing title, and it is not an ebook/set/etc."""
-    g = norm(got)
-    if any(x in g for x in NOT_THE_BOOK):
-        return False
-    words = [w for w in norm(want).split() if len(w) > 2] or norm(want).split()
-    return bool(words) and all(w in g.split() for w in words)
+def not_the_book(listing_title):
+    """Cheap whole-word prefilter before DREX (saves tokens). 'mug' must not reject 'The Smuggler'."""
+    t = f" {norm(listing_title)} "
+    return any(f" {w} " in t for w in NOT_THE_BOOK)
 
 
 def lower_median(offers):
@@ -100,6 +107,19 @@ class Pricer:
                                "url": str(r.url), "source": "Frankfurter (European Central Bank reference rates)"}
         return self.cache[key]
 
+    # ---- listing match: DREX decides whether each listing is the thing being priced ----
+    def matching(self, subject, offers, question):
+        """Keep offers whose listing DREX judges to match `subject` with P >= LISTING_MATCH_MIN. Cached for reruns."""
+        if not offers:
+            return []
+        key = f"drex|{question[:40]}|{json.dumps(subject, sort_keys=True)}|" + "|".join(o["title"] for o in offers)
+        if key not in self.cache:
+            state = {"item_being_priced": subject, "listings": {f"L{i}": o["title"] for i, o in enumerate(offers)}}
+            self.cache[key] = drex.ask(state, {f"L{i}": question.format(L=f"L{i}") for i in range(len(offers))})
+        p = self.cache[key]
+        return [o | {"match_p": round(p.get(f"L{i}", 0), 3)} for i, o in enumerate(offers)
+                if p.get(f"L{i}", 0) >= settings.LISTING_MATCH_MIN]
+
     # ---- offers ----
     def book_offers(self, title, author, country):
         loc = settings.LOCALES[country]
@@ -107,8 +127,9 @@ class Pricer:
         res = self.shopping(f"{title} {last} book".strip(), loc["gl"])
         offers = [{"amount": a, "retailer": x.get("source", ""), "url": x.get("link", ""), "title": x.get("title", "")}
                   for x in res["results"]
-                  if title_matches(title, x.get("title", "")) and (a := parse_price(x.get("price"), loc["symbols"]))]
-        return offers, res["retrieved_at"]
+                  if not not_the_book(x.get("title", ""))
+                  and (a := parse_price(x.get("price"), loc["symbols"]))]
+        return self.matching({"title": title, "author": author}, offers, BOOK_NEW_Q), res["retrieved_at"]
 
     def convert(self, amount, base, to):
         if base == to:
@@ -145,7 +166,9 @@ class Pricer:
         res = self.ebay_used(f"{title} {last}".strip(), market)
         offers = [{"amount": float(x["price"]["value"]), "currency": x["price"]["currency"],
                    "url": x.get("itemWebUrl", ""), "title": x.get("title", ""), "condition": x.get("condition", "")}
-                  for x in res["results"] if x.get("price") and title_matches(title, x.get("title", ""))]
+                  for x in res["results"] if x.get("price")
+                  and not not_the_book(x.get("title", ""))]
+        offers = self.matching({"title": title, "author": author}, offers, BOOK_USED_Q)
         if not offers:
             return None
         o = lower_median(offers)
@@ -165,11 +188,10 @@ class Pricer:
         if is_art:
             q = f"{item['description']} framed print"
         res = self.shopping(q, loc["gl"])
-        brand_words = norm(item["brand_model"]).split()
-        offers = [{"amount": a, "retailer": x.get("source", ""), "url": x.get("link", "")}
-                  for x in res["results"]
-                  if (a := parse_price(x.get("price"), loc["symbols"]))
-                  and (not brand_words or any(w in norm(x.get("title", "")).split() for w in brand_words))]
+        offers = [{"amount": a, "retailer": x.get("source", ""), "url": x.get("link", ""), "title": x.get("title", "")}
+                  for x in res["results"] if (a := parse_price(x.get("price"), loc["symbols"]))]
+        subject = {k: item[k] for k in ("category", "description", "material", "brand_model", "dimensions_cm")}
+        offers = self.matching(subject, offers, ITEM_BRAND_Q if item["brand_model"] else ITEM_GENERIC_Q)
         if not offers:
             return None, q
         amts = sorted(o["amount"] for o in offers)
@@ -193,13 +215,18 @@ def run(sweep_dir, books, items, country):
     pr = Pricer(sweep_dir / "price_cache.json")
     thr = loc["appraisal_threshold"]
     out_books, out_items = {}, {}
+    evidence = {b["id"]: {"title": b["title"], "visible_marks": b["marks"], "user_said": b["notes"]}
+                for b in books if not b["excluded"] and (b["marks"] or b["notes"])}
+    appraisal = drex.ask({"books": evidence}, {k: APPRAISAL_Q.format(id=k) for k in evidence}) if evidence else {}
     try:
         for b in books:
             if b["excluded"]:
                 continue
             p = {"status": "identified", "reasons": []}
-            if b["appraisal_reasons"]:
-                p.update(status="needs_appraisal", reasons=[f"possible rare/signed/special: {', '.join(b['appraisal_reasons'])}"])
+            if appraisal.get(b["id"], 0) >= settings.APPRAISAL_MIN:
+                ev = ", ".join(b["marks"] + [f"user: {n}" for n in b["notes"]])
+                p.update(status="needs_appraisal", appraisal_p=round(appraisal[b["id"]], 3),
+                         reasons=[f"possible rare/signed/special copy (P={appraisal[b['id']]:.2f}; {ev}): not auto-priced"])
             elif not b["title"]:
                 p["status"] = "unidentified"
             else:

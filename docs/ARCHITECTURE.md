@@ -26,10 +26,11 @@
 |---|---|---|
 | Conversation, directing the sweep, voice corrections | Gemini Live (native audio) | tool calls → `notes.jsonl` |
 | Blur, glare, motion | OpenCV (Laplacian variance, saturated pixels, frame difference) | nudges into the Live session |
-| Spine boxes, spine text, item boxes/categories | Gemini Flash, schema-constrained JSON, temperature 0 | `reads/*.json` |
+| Spine boxes, spine text, item boxes/categories | Gemini 3.8 Flash, schema-constrained JSON, temperature 0 | `reads/*.json` |
 | Close re-read of uncertain spines | Gemini Flash on crops | votes |
-| Camera poses + per-pixel depth | VGGT-1B (pretrained) on Modal | `recon.npz` |
-| Identity | Google Books / Open Library + fuzzy match (difflib) | `id_confidence` |
+| Camera poses + per-pixel depth | MapAnything (metric, Apache) or VGGT-1B on Modal | `recon.npz` |
+| Identity | Google Books / Open Library candidates → DREX P(same work) | `id_confidence` (calibrated) |
+| Listing match, appraisal | DREX yes/no probabilities | offers kept at P ≥ 0.8; appraisal at P ≥ 0.5 |
 | Identity audit | Gemini Pro on the crop and the claim | mismatches cleared to blank |
 | Prices | Serper Google Shopping, eBay Browse, Frankfurter FX: **no LLM** | `prices.json` |
 | Totals | Python `Decimal` | `claim_packet.json` |
@@ -44,7 +45,7 @@ and set in `.env`:
    reconstructed depth.
 3. scale = real side ÷ reconstructed side. Take the median over every detection; the spread becomes the confidence.
 
-Cross-check: after scaling, the median upright spine must fall within standard book formats (14–32 cm). If it
+Cross-check 1: with MapAnything the reconstruction is already metric, so the marker correction should be ~1.0; >10% disagreement lowers confidence and goes to review. Cross-check 2: after scaling, the median upright spine must fall within standard book formats (14–32 cm). If it
 doesn't, the room and dimensions go to review. **Fallback**: if no marker is ever seen, scale comes from that
 book-format prior (median upright spine = 21 cm). Confidence is then capped at 0.3 and the packet says so.
 
@@ -63,7 +64,7 @@ Using the scaled point cloud:
 
 | Figure | Source | Rule |
 |---|---|---|
-| Book replacement | Google Shopping (Serper, `gl` = country) | title words must all match; ebook/Kindle/sets rejected; lower-median offer; URL + retrieval time kept |
+| Book replacement | Google Shopping (Serper, `gl` = country) | DREX P(listing is a new copy of this book) ≥ 0.8; ebook/Kindle/sets rejected; lower-median offer; URL + retrieval time kept |
 | Book replacement, no local offer | US, then GB shopping + Frankfurter FX | `converted: true`, original amount and FX date kept |
 | Book used | eBay Browse API, USED + fixed price, books category | lower-median matched listing; converted when it is a foreign market |
 | Item with legible brand/model | Google Shopping | `priced` |

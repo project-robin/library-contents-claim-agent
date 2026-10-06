@@ -5,7 +5,7 @@ import json
 import cv2
 import numpy as np
 
-from pipeline import books, run, vision
+from pipeline import books, drex, run, settings, vision
 from pipeline.geometry import ARUCO
 
 L, W, H, K_SCALE = 4.0, 3.0, 2.6, 0.37  # K_SCALE: reconstruction units are not metres
@@ -98,6 +98,9 @@ def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(books, "_gbooks", lambda t, a: [{"title": t, "subtitle": "", "authors": [a], "publisher": "",
                                                          "year": "2001", "isbn": "", "url": "u", "source": "stub"}])
     monkeypatch.setattr(books, "_openlibrary", lambda t, a: [])
+    monkeypatch.setattr(drex, "ask", lambda state, qs: {k: 0.95 for k in qs})
+    monkeypatch.setattr(settings, "require", lambda what: None)
+    monkeypatch.setattr(settings, "SERPER_API_KEY", "")  # no network: pricing finds nothing and must invent nothing
     p = run.run(sd, start="geometry", log=lambda s: None)
 
     r = p["room"]

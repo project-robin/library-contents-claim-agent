@@ -36,6 +36,7 @@ class Recon:
         self.E, self.K, self.orig = z["extrinsic"], z["intrinsic"], z["orig_wh"]
         self.depth, self.conf = z["depth"].astype(np.float32), z["conf"].astype(np.float32)
         self.gh, self.gw = self.depth.shape[1:3]
+        self.metric = bool(z["metric"]) if "metric" in z.files else False  # MapAnything outputs metres
         self.conf_thr = np.median(self.conf.reshape(len(self.frames), -1), axis=1)
 
     def to_grid(self, i, uv):
@@ -253,6 +254,17 @@ def run(sweep_dir, reads):
         out["scale_method"] = (f"printed ArUco marker, {settings.MARKER_SIZE_CM} cm side, {len(s)} detections, "
                                f"median abs deviation {spread:.1%}")
         scale_conf = float(np.clip(1 - spread * 5, 0.2, 1.0))
+        if rec.metric:  # independent check: a metric model should need a correction near 1.0
+            out["model_metric_check"] = {"marker_correction": round(scale, 3), "agrees": abs(scale - 1) <= 0.10}
+            out["scale_method"] += f"; MapAnything metric output agrees within {abs(scale - 1):.1%}"
+            if abs(scale - 1) > 0.10:
+                out["notes"].append(f"marker and metric model disagree on scale by {abs(scale - 1):.0%}")
+                scale_conf *= 0.7
+    elif rec.metric:
+        scale = 1.0
+        out["scale_method"] = "MapAnything metric reconstruction (no marker seen; not independently anchored)"
+        out["notes"].append("no marker seen; scale from the metric model only")
+        scale_conf = 0.5
     else:
         scale, n = book_prior_scale(rec, reads)
         if scale is None:

@@ -13,6 +13,7 @@ dependencies = [
     "pillow>=10.4",
     "python-dotenv>=1.0",
     "modal>=1.0",
+    "pydantic-settings>=2.15.0",
 ]
 
 [dependency-groups]

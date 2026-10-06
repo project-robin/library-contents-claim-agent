@@ -3,6 +3,18 @@
 Approved 2026-10-06. Deadline ≈ 2026-10-09 02:30 IST (72h from brief at 02:38 on Oct 6).
 Brief: `../Take-Home Assignment_ Library Contents Claim Agent.md`
 
+## Revision 2 (2026-10-06, after tool research + live tests)
+
+| Change | Evidence | Status |
+|---|---|---|
+| Models → `gemini-3.8-live` (stable Live default) + `gemini-3.8-flash`, thinking `low`, fallback `gemini-flash-latest` | 3.1-flash-live is now "legacy"; 3.8 Flash read 22/22 spines incl. a flat book on a test shelf; frequent 503 "high demand" → retries + fallback | done |
+| **DREX** (Nace.AI decision model) for every judgement: identity P(same work), listing match, appraisal | live: Sapiens listing check 0.99 vs Kindle 0.002 / Graphic Vol.1 0.013 (old word-rule wrongly accepted it); identities 0.92–0.998, ambiguous "Erzählungen 2" 0.518 → review | done |
+| **pydantic-settings** typed config + `require()` fail-fast; **pydantic output contract** validated before writing | missing key now fails at startup; unsourced price / dropped field / priced appraisal item fail validation | done |
+| **MapAnything (Apache)** added next to VGGT on Modal; `RECON_MODEL` picks; metric output = independent cross-check of marker, fallback when marker unseen | VGGT has no metric output + non-commercial licence; MapAnything better on textureless surfaces | code done, spike pending (needs Modal) |
+| **SAM 3 / 3.1** → *not* in core path; optional eval cross-check via free HF Space | on a 22-spine shelf: Gemini boxes vs SAM masks median IoU 0.944, width diff 3.8%; SAM missed the flat book; free Space 80 s/image | decided |
+| Catalogue search strips volume markers; Books API reuses Gemini key | anonymous Google Books quota exhausted (429); "In Nacht und Eis II" 0 hits → stripped 12 hits | done (user: enable Books API on the Gemini project) |
+| Free HF route for MapAnything/VGGT | no inference providers; Spaces expose only a GLB viewer, not depth/poses → Modal free credits instead | decided |
+
 ## Decisions
 
 | Topic | Decision | Why |
@@ -10,10 +22,12 @@ Brief: `../Take-Home Assignment_ Library Contents Claim Agent.md`
 | Web stack | FastAPI + one static `index.html` + vanilla JS. **No Next.js** | Pipeline is Python; reference is FastAPI+JS; polish/deploy unscored; Vercel can't hold Live websocket; one-command setup |
 | Package mgr | `uv`, Python 3.12 | Fast, reproducible, stranger setup < 15 min |
 | Live agent | Gemini Live (native audio), relayed through backend | Backend sees every frame → saves evidence, injects capture nudges |
-| Vision | Gemini Flash: spine boxes + text + items, JSON schema output | One call per keyframe returns spines + items |
+| Vision | Gemini 3.8 Flash: spine boxes + text + items, JSON schema output | One call per keyframe returns spines + items |
+| Decisions | DREX calibrated probabilities (identity, listing match, appraisal) | Calibrated, ~150 ms, text-only |
+| Config | pydantic-settings + output contract model | Fail fast; contract enforced |
 | Checker | Different Gemini model (Pro) audits identified spines | Protects "≤3% confidently wrong"; same vendor = one key (limit documented) |
 | GPU | Modal serverless (local machine: no GPU, 5.6 GB RAM) | torch never installed locally |
-| 3D | VGGT on Modal → poses + depth for keyframes (DA3 alt if spike fails) | Room area needs multi-view geometry |
+| 3D | MapAnything (metric, Apache) or VGGT on Modal → poses + depth; choose by spike | Room area needs multi-view geometry |
 | Metric scale | Printed ArUco marker (DICT_4X4_50, 15 cm, ids 0/1). Fallback: standard book-format prior | `cv2.aruco` built-in; book prior = cross-check + fallback (low confidence) |
 | Book catalog | Google Books → Open Library fallback, `difflib` fuzzy match | Free, no hardcoded catalogue |
 | New prices | Serper.dev `/shopping` with `gl` per locale | Sourced URL per offer; 2,500 free queries |
@@ -114,10 +128,18 @@ README.md  .env.example  pyproject.toml
 - [x] A17 README, ARCHITECTURE, REFERENCE_NOTES, FAILURE_LOG/RESULTS templates (results filled in Phase D)
 - [x] A18 Offline end-to-end test: synthetic room → packet (count 30/30, floor/wall/height within tolerance)
 
+### Phase A2 — revision 2
+- [x] A19 Model IDs 3.8 + retries/fallback
+- [x] A20 DREX client + identity/listing/appraisal decisions
+- [x] A21 pydantic-settings + output contract (tests)
+- [x] A22 MapAnything Modal class + metric cross-check
+- [x] A23 Catalogue query cleaning (volumes), Books API key reuse
+
 ### Phase B — keys + reference (user provides keys)
-- [ ] B1 Accounts: Gemini, Serper, eBay dev, Modal → `.env`; `modal deploy gpu/modal_recon.py`
+- [x] B0 Gemini, DREX, HF keys in `.env` (Gemini + DREX verified live)
+- [ ] B1 Remaining: Serper, eBay dev, Modal → `.env`; enable Books API; `modal deploy gpu/modal_recon.py`
 - [ ] B2 Run reference app, finish REFERENCE_NOTES (kept / changed / threw away)
-- [ ] B3 Verify current Gemini Live + Flash model IDs
+- [x] B3 Verify current Gemini Live + Flash model IDs (3.8; Flash tested live)
 
 ### Phase C — ground truth (user, before tuning)
 - [ ] C1 Print markers, measure printed size → MARKER_SIZE_CM
@@ -127,7 +149,7 @@ README.md  .env.example  pyproject.toml
 - [ ] C5 Hand-check 15 prices (same source type) → prices.csv; list ≥8 items → items.csv
 
 ### Phase D — test & iterate
-- [ ] D1 Geometry spike: test sweep → floor area vs tape (go/no-go: within 15%)
+- [ ] D1 Geometry spike: test sweep → MapAnything vs VGGT floor area vs tape (go/no-go: within 15%); log both in failure log
 - [ ] D2 Full sweeps → eval → fix worst error → measure fix
 - [ ] D3 Test on an unseen shelf/room (lab / friend)
 - [ ] D4 Fill RESULTS.md, FAILURE_LOG.md (3 worst errors, cost, latency)

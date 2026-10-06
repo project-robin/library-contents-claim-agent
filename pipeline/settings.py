@@ -1,30 +1,79 @@
-"""All tunables in one place. Values read from .env; defaults are calibration knobs, not test-room facts."""
-import os
+"""All tunables in one place, typed and validated at import (pydantic-settings reads .env).
+Defaults are calibration knobs, not facts about any test room."""
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-def _f(name, default):
-    return float(os.getenv(name, default))
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
-EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID", "")
-EBAY_CLIENT_SECRET = os.getenv("EBAY_CLIENT_SECRET", "")
-GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY", "")  # optional, raises quota
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
-LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-3.1-flash-live-preview")
-VISION_MODEL = os.getenv("VISION_MODEL", "gemini-flash-latest")
-CHECKER_MODEL = os.getenv("CHECKER_MODEL", "gemini-pro-latest")
-LIVE_VOICE = os.getenv("LIVE_VOICE", "Kore")
+    GEMINI_API_KEY: str = ""
+    SERPER_API_KEY: str = ""
+    DREX_API_KEY: str = ""
+    DREX_BASE_URL: str = "https://drex.nace.ai"
+    DREX_MODEL: str = "drex-latest"
+    HF_TOKEN: str = ""
+    EBAY_CLIENT_ID: str = ""
+    EBAY_CLIENT_SECRET: str = ""
+    GOOGLE_BOOKS_API_KEY: str = ""  # optional, raises quota
 
-SWEEPS_DIR = Path(os.getenv("SWEEPS_DIR", "sweeps"))
-DEFAULT_COUNTRY = os.getenv("DEFAULT_COUNTRY", "IN")
-COMPARISON_COUNTRY = os.getenv("COMPARISON_COUNTRY", "US")
+    LIVE_MODEL: str = "gemini-3.8-live"
+    VISION_MODEL: str = "gemini-3.8-flash"
+    VISION_FALLBACK_MODEL: str = "gemini-flash-latest"  # used when the primary returns 503 "high demand"
+    VISION_THINKING: str = "low"
+    CHECKER_MODEL: str = "gemini-pro-latest"
+    LIVE_VOICE: str = "Kore"
+    RECON_MODEL: str = "mapanything"  # mapanything | vggt (both on Modal; pick by the geometry spike)
+
+    SWEEPS_DIR: Path = Path("sweeps")
+    DEFAULT_COUNTRY: str = "IN"
+    COMPARISON_COUNTRY: str = "US"
+    USED_FALLBACK_MARKET: str = "EBAY_US"
+
+    # Metric scale. Measure the printed marker with a ruler and set this; printers rescale.
+    MARKER_SIZE_CM: float = Field(15.0, gt=1, lt=60)
+    BOOK_PRIOR_HEIGHT_CM: float = 21.0  # median upright spine, fallback only
+
+    # Capture quality (tune on your phone: Laplacian variance at 640 px width)
+    BLUR_MIN: float = 60
+    GLARE_MAX: float = Field(0.06, ge=0, le=1)
+    MOTION_MAX: float = 28
+    NOVELTY_MIN: float = 10
+    MAX_RECON_FRAMES: int = Field(150, ge=8)
+    LIVE_READ_CONCURRENCY: int = Field(8, ge=1)
+
+    # Decisions (DREX calibrated probabilities)
+    CONF_IDENTIFIED: float = Field(0.75, ge=0, le=1)
+    CONF_MIN: float = Field(0.5, ge=0, le=1)
+    LISTING_MATCH_MIN: float = Field(0.8, ge=0, le=1)
+    APPRAISAL_MIN: float = Field(0.5, ge=0, le=1)
+
+    # $ per 1M tokens (input, output). List prices change: update before quoting cost.
+    RATE_LIVE_IN: float = 3.0
+    RATE_LIVE_OUT: float = 12.0
+    RATE_VISION_IN: float = 0.75
+    RATE_VISION_OUT: float = 3.75
+    RATE_CHECKER_IN: float = 2.0
+    RATE_CHECKER_OUT: float = 12.0
+    RATE_DREX_IN: float = 0.5
+    SERPER_COST_PER_QUERY: float = 0.001
+    GPU_COST_PER_S: float = 0.00054  # Modal L40S
+
+
+# ponytail: module attributes keep call sites as `settings.X`
+globals().update(Settings().model_dump())
+
+REQUIRED = {"live": ["GEMINI_API_KEY"], "pipeline": ["GEMINI_API_KEY", "SERPER_API_KEY", "DREX_API_KEY"]}
+
+
+def require(what):
+    """Fail at startup with a clear message instead of three minutes into a sweep."""
+    missing = [k for k in REQUIRED[what] if not globals()[k]]
+    if missing:
+        raise SystemExit(f"Missing in .env: {', '.join(missing)} (see .env.example)")
+
 
 # Locale = market settings, not prices. Add a row to support a new country.
 LOCALES = {
@@ -32,29 +81,11 @@ LOCALES = {
     "US": {"currency": "USD", "gl": "us", "symbols": ("$", "USD"), "ebay": "EBAY_US", "appraisal_threshold": 75},
     "GB": {"currency": "GBP", "gl": "uk", "symbols": ("£", "GBP"), "ebay": "EBAY_GB", "appraisal_threshold": 60},
 }
-USED_FALLBACK_MARKET = os.getenv("USED_FALLBACK_MARKET", "EBAY_US")
 
-# Metric scale. Measure the printed marker with a ruler and set this; printers rescale.
-MARKER_SIZE_CM = _f("MARKER_SIZE_CM", "15.0")
-BOOK_PRIOR_HEIGHT_CM = _f("BOOK_PRIOR_HEIGHT_CM", "21.0")  # median upright spine, fallback only
-
-# Capture quality (tune on your phone: Laplacian variance at 640 px width)
-BLUR_MIN = _f("BLUR_MIN", "60")
-GLARE_MAX = _f("GLARE_MAX", "0.06")
-MOTION_MAX = _f("MOTION_MAX", "28")
-NOVELTY_MIN = _f("NOVELTY_MIN", "10")
-MAX_RECON_FRAMES = int(os.getenv("MAX_RECON_FRAMES", "150"))
-
-# Identification
-CONF_IDENTIFIED = _f("CONF_IDENTIFIED", "0.75")
-CONF_MIN = _f("CONF_MIN", "0.5")
-APPRAISAL_YEAR = int(os.getenv("APPRAISAL_YEAR", "1950"))
-
-# $ per 1M tokens (input, output). List prices change: update before quoting cost.
 TOKEN_RATES = {
-    LIVE_MODEL: (_f("RATE_LIVE_IN", "3.0"), _f("RATE_LIVE_OUT", "12.0")),
-    VISION_MODEL: (_f("RATE_VISION_IN", "0.5"), _f("RATE_VISION_OUT", "3.0")),
-    CHECKER_MODEL: (_f("RATE_CHECKER_IN", "2.0"), _f("RATE_CHECKER_OUT", "12.0")),
+    LIVE_MODEL: (RATE_LIVE_IN, RATE_LIVE_OUT),  # noqa: F821 (set via globals above)
+    VISION_MODEL: (RATE_VISION_IN, RATE_VISION_OUT),  # noqa: F821
+    VISION_FALLBACK_MODEL: (RATE_VISION_IN, RATE_VISION_OUT),  # noqa: F821
+    CHECKER_MODEL: (RATE_CHECKER_IN, RATE_CHECKER_OUT),  # noqa: F821
+    "drex": (RATE_DREX_IN, 0.0),  # noqa: F821 (only input tokens are billed)
 }
-SERPER_COST_PER_QUERY = _f("SERPER_COST_PER_QUERY", "0.001")
-GPU_COST_PER_S = _f("GPU_COST_PER_S", "0.00054")  # Modal L40S

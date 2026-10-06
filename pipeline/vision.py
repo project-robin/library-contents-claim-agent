@@ -1,7 +1,9 @@
 """Gemini vision calls. The model transcribes and classifies what is visible; it never prices or measures."""
+import time
 from typing import Literal
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 from pydantic import BaseModel
 
@@ -55,15 +57,23 @@ coffee machines, decor, plants). box_2d as above. brand_model only if a logo or 
 issue: the main capture problem for reading spines in this frame, or "none"."""
 
 
-def _generate(model, parts, schema, prompt):
-    resp = client().models.generate_content(
-        model=model,
-        contents=[*parts, prompt],
-        config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema,
-                                           temperature=0),
-    )
-    metrics.add_tokens(model, resp.usage_metadata)
-    return resp.parsed
+def _generate(model, parts, schema, prompt, thinking=None):
+    """Retries 429/5xx with backoff; after two 'high demand' failures switches to the fallback model."""
+    cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema, temperature=0,
+                                      thinking_config=types.ThinkingConfig(thinking_level=thinking) if thinking else None)
+    for attempt in range(5):
+        # the checker never falls back: its value is being a different model
+        m = settings.VISION_FALLBACK_MODEL if attempt >= 2 and model == settings.VISION_MODEL else model
+        try:
+            resp = client().models.generate_content(model=m, contents=[*parts, prompt], config=cfg)
+            metrics.add_tokens(m, resp.usage_metadata)
+            if attempt:
+                metrics.count("vision_retries", attempt)
+            return resp.parsed
+        except genai_errors.APIError as e:
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 4:
+                raise
+            time.sleep(2 * (attempt + 1))
 
 
 def _img(jpeg):
@@ -71,7 +81,7 @@ def _img(jpeg):
 
 
 def read_frame(jpeg: bytes) -> dict:
-    out = _generate(settings.VISION_MODEL, [_img(jpeg)], FrameRead, FRAME_PROMPT)
+    out = _generate(settings.VISION_MODEL, [_img(jpeg)], FrameRead, FRAME_PROMPT, settings.VISION_THINKING)
     return out.model_dump() if out else {"spines": [], "items": [], "issue": "none"}
 
 
@@ -94,7 +104,7 @@ def read_crops(jpegs: list[bytes]) -> list[dict]:
         parts += [f"Crop {i}:", _img(j)]
     prompt = ("Each crop is one book spine (it may be rotated). For each crop index, transcribe title, author and "
               "publisher exactly as printed. Do not guess or complete missing words; leave unreadable fields empty.")
-    out = _generate(settings.VISION_MODEL, parts, CropBatch, prompt)
+    out = _generate(settings.VISION_MODEL, parts, CropBatch, prompt, settings.VISION_THINKING)
     by_i = {c.index: c.model_dump() for c in (out.crops if out else [])}
     return [by_i.get(i, {"title": "", "author": "", "publisher": "", "legibility": "none"}) for i in range(len(jpegs))]
 

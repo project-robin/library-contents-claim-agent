@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 
 from pipeline import books, frames, geometry, items, metrics, packet, pricing, review, settings, vision
+from pipeline.contract import ClaimPacket
 
 STAGES = ["keyframes", "reads", "recon", "geometry", "books", "checker", "items", "pricing", "packet"]
 
@@ -59,13 +60,14 @@ def recon(sd, kfs):
     jpegs = [cv2.imencode(".jpg", cv2.resize(imgs[f], (gw, gh), interpolation=cv2.INTER_AREA),
                           [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes() for f in names]
     t0 = time.perf_counter()
-    z = np.load(io.BytesIO(remote().run.remote(jpegs)))
+    z = np.load(io.BytesIO(remote(settings.RECON_MODEL).run.remote(jpegs)))
     metrics.count("gpu_seconds", time.perf_counter() - t0)
     np.savez_compressed(sd / "recon.npz", frames=np.array(names), orig_wh=np.array([size] * len(names)),
-                        **{k: z[k] for k in ("extrinsic", "intrinsic", "depth", "conf")})
+                        model=settings.RECON_MODEL, **{k: z[k] for k in ("extrinsic", "intrinsic", "depth", "conf", "metric")})
 
 
 def run(sd, start="keyframes", recompute_keyframes=False, log=print):
+    settings.require("pipeline")
     sd = Path(sd)
     sweep = load(sd / "sweep.json")
     country = sweep.get("country") or settings.DEFAULT_COUNTRY
@@ -127,6 +129,7 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print):
             extra["time_to_packet_s"] = round(time.time() - sweep["t_end_epoch"], 1)
         m = metrics.save(sd / "metrics.json", extra)
         p = packet.build(sweep, geo_json, books_out, items_out, prices, q, m)
+        ClaimPacket.model_validate(p)  # contract check: a dropped field or unsourced price fails here, not in review
         dump(sd / "claim_packet.json", p)
         svg = packet.floorplan_svg(geo_json, books_out, items_out)
         (sd / "floorplan.svg").write_text(svg)

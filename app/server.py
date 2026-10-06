@@ -24,6 +24,7 @@ from pipeline.books import norm
 log = logging.getLogger("sweep")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 STATIC = Path(__file__).parent / "static"
+settings.require("live")
 settings.SWEEPS_DIR.mkdir(exist_ok=True)
 
 NUDGES = {
@@ -44,7 +45,7 @@ async def ws_endpoint(ws: WebSocket):
 def warm_modal():
     try:
         from gpu.modal_recon import remote
-        remote().ping.remote()
+        remote(settings.RECON_MODEL).ping.remote()
         log.info("modal warm")
     except Exception as e:  # no Modal credentials yet: pipeline will report it at recon time
         log.warning("modal warm-up failed: %s", e)
@@ -58,7 +59,7 @@ class Session:
         self.n, self.prev_small, self.selector = 0, None, frames.KeyframeSelector()
         self.last_live_frame = self.last_nudge = 0.0
         self.bad_streak = 0
-        self.read_sem, self.read_tasks = asyncio.Semaphore(3), set()
+        self.read_sem, self.read_tasks = asyncio.Semaphore(settings.LIVE_READ_CONCURRENCY), set()
         self.books, self.items, self.unreadable_now = {}, [], 0
         self.last_item_t = {}
 
