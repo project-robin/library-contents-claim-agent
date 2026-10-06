@@ -9,11 +9,12 @@ Two models, chosen by RECON_MODEL after the geometry spike:
 The printed marker anchors scale in both cases.
 """
 import io
+import os
 
 import modal
 
 APP_NAME = "library-claim-recon"
-GPU = "L40S"
+GPU = os.environ.get("RECON_GPU", "L4")  # L40S/A100 need a card on Modal; L4 (24 GB) works on free credits
 
 ma_image = (
     modal.Image.debian_slim(python_version="3.12")
