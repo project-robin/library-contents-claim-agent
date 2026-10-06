@@ -28,7 +28,11 @@ def norm(s):
 
 def sim(a, b):
     a, b = norm(a), norm(b)
-    return difflib.SequenceMatcher(None, a, b).ratio() if a and b else 0.0
+    if not (a and b):
+        return 0.0
+    r = difflib.SequenceMatcher(None, a, b).ratio()
+    # "Volume 2" is not "Volume 3": series and encyclopedia sets differ only by number
+    return min(r, 0.5) if re.findall(r"\d+", a) != re.findall(r"\d+", b) else r
 
 
 def load_notes(sweep_dir):

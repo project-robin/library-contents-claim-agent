@@ -64,7 +64,7 @@ sweeps/<id>/
 - **geometry**: ArUco corners inset 15% → per-corner depth → 3D edge length → scale = marker_m / edge (median over frames, MAD → confidence). No marker → book-format prior. Up = mean camera-down; floor = lowest strong height-histogram peak, SVD refine; ceiling = highest peak ≥2 m above. Wall points (0.3 m–2.0 m) → 5 cm grid → close → largest contour → approxPolyDP; fallback convex hull if gaps. L/W via minAreaRect; floor area = polygon area; wall area gross = perimeter × height (net minus openings = extra field).
 - **books**: detections → 3D center/dims (median depth in box) → greedy 3D + text dedup → units (xy gap 0.4 m) → rows (bottom-z gap 0.10 m) → positions → text vote + crop re-read → Google Books/Open Library → `id_confidence = 0.65·title_sim + 0.2·author_sim + 0.15·view_agreement`. ≥0.75 identified; 0.5–0.75 identified + review; <0.5 unidentified (title blank). ISBN/edition only if spine publisher matches. Notes/exclusions applied via timestamp → frame → most central detection.
 - **items**: detections (non-book) → 3D extents (p5–p95, PCA) → dedup (same category, <0.6 m) → dims.
-- **pricing**: new = median of title-matched local Serper offers (ebook/Kindle/box sets excluded); none → US + FX (`converted: true`); none → blank, excluded. Used = eBay median, converted when foreign. Appraisal (not priced): signed / first edition / leather / gilt / user note / pub year < 1950 / price > threshold (₹5,000 / $75). Items: brand known → priced; else p25–p75 range. Art → needs_appraisal unless user says print. 10 books re-priced for US → `locale_comparison`.
+- **pricing**: new = median of title-matched local Serper offers (ebook/Kindle/box sets excluded); none → US + FX (`converted: true`); none → blank, excluded. Used = eBay median, converted when foreign. Appraisal (not priced): signed / first edition / leather / gilt / old binding / user note / price > threshold (₹5,000 / $75). (Pub-year rule dropped: catalogue year is the work's, not the copy's — would flag every Dickens paperback.) Items: brand known → priced; else p25–p75 range. Art → needs_appraisal unless user says print. 10 books re-priced for US → `locale_comparison`.
 - **review**: rule list (unidentified, low conf, checker mismatch/unsure, appraisal, no price, implausible dims, no scale reference, scale disagreement, room fallback, ceiling missing).
 - **packet**: schema from brief + extra fields; totals in `Decimal`; `excluded_from_totals` = count of lines without a price in totals.
 
@@ -95,23 +95,24 @@ README.md  .env.example  pyproject.toml
 ## Task checklist
 
 ### Phase A — code (no keys needed)
-- [ ] A1 Project scaffold: pyproject, .env.example, .gitignore, settings
-- [ ] A2 Marker PDF generator
-- [ ] A3 frames.py: quality metrics + keyframe selector
-- [ ] A4 vision.py: Flash frame read, crop re-read, checker
-- [ ] A5 gpu/modal_recon.py: VGGT on Modal
-- [ ] A6 geometry.py: scale, floor/ceiling, room polygon, 3D helpers
-- [ ] A7 books.py: dedup, shelves, dims, resolve, notes/exclusions
-- [ ] A8 items.py
-- [ ] A9 pricing.py: Serper, eBay, FX, appraisal, locale comparison
-- [ ] A10 review.py
-- [ ] A11 packet.py: totals, JSON, HTML report, floor plan
-- [ ] A12 run.py orchestrator + metrics
-- [ ] A13 app/server.py + live.py: relay, tools, nudges, live worker
-- [ ] A14 static UI (index.html, app.js)
-- [ ] A15 eval/score.py + ground_truth templates
-- [ ] A16 tests (totals, pricing, geometry) passing offline
-- [ ] A17 README, ARCHITECTURE, REFERENCE_NOTES, FAILURE_LOG/RESULTS templates
+- [x] A1 Project scaffold: pyproject, .env.example, .gitignore, settings
+- [x] A2 Marker PDF generator
+- [x] A3 frames.py: quality metrics + keyframe selector
+- [x] A4 vision.py: Flash frame read, crop re-read, checker
+- [x] A5 gpu/modal_recon.py: VGGT on Modal
+- [x] A6 geometry.py: scale, floor/ceiling, room polygon, 3D helpers
+- [x] A7 books.py: dedup, shelves, dims, resolve, notes/exclusions
+- [x] A8 items.py
+- [x] A9 pricing.py: Serper, eBay, FX, appraisal, locale comparison
+- [x] A10 review.py
+- [x] A11 packet.py: totals, JSON, HTML report, floor plan
+- [x] A12 run.py orchestrator + metrics
+- [x] A13 app/server.py + live.py: relay, tools, nudges, live worker
+- [x] A14 static UI (index.html, app.js)
+- [x] A15 eval/score.py + ground_truth templates
+- [x] A16 tests (totals, pricing, geometry) passing offline
+- [x] A17 README, ARCHITECTURE, REFERENCE_NOTES, FAILURE_LOG/RESULTS templates (results filled in Phase D)
+- [x] A18 Offline end-to-end test: synthetic room → packet (count 30/30, floor/wall/height within tolerance)
 
 ### Phase B — keys + reference (user provides keys)
 - [ ] B1 Accounts: Gemini, Serper, eBay dev, Modal → `.env`; `modal deploy gpu/modal_recon.py`

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library Claim Sweep</title>
+<style>
+  :root { --bg:#111; --fg:#eee; --muted:#999; --ok:#2e7d32; --warn:#c62828; --card:#1c1c1c; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px system-ui, sans-serif; }
+  #stage { position:relative; width:100%; height:55vh; background:#000; }
+  video { width:100%; height:100%; object-fit:cover; }
+  #quality { position:absolute; top:10px; left:10px; padding:4px 10px; border-radius:12px; background:var(--ok); font-weight:600; }
+  #quality.bad { background:var(--warn); }
+  #counts { position:absolute; top:10px; right:10px; padding:4px 10px; border-radius:12px; background:#0008; }
+  #controls { display:flex; gap:8px; padding:8px 16px; }
+  button { flex:1; padding:12px; font-size:16px; border:0; border-radius:8px; background:#3949ab; color:#fff; }
+  button:disabled { opacity:.4; }
+  #end { background:#6d4c41; }
+  #status { padding:0 16px; color:var(--muted); min-height:1.4em; }
+  .panes { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px 16px 24px; }
+  .pane { background:var(--card); border-radius:8px; padding:8px; max-height:32vh; overflow:auto; }
+  .pane h3 { margin:0 0 6px; font-size:13px; color:var(--muted); text-transform:uppercase; }
+  .pane div { padding:2px 0; border-bottom:1px solid #2a2a2a; font-size:13px; }
+  .agent { color:#9fa8da; } .user { color:#fff; } .mon { color:#ffb74d; font-size:12px; }
+  #packet a { color:#80cbc4; display:block; padding:8px 16px; font-size:17px; }
+  @media (max-width:600px) { .panes { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" autoplay playsinline muted></video>
+  <div id="quality">camera ok</div>
+  <div id="counts">0 books · 0 items</div>
+</div>
+<div id="controls">
+  <button id="start">Start sweep</button>
+  <button id="end" disabled>End sweep</button>
+</div>
+<div id="status">Print the marker card, then tap Start.</div>
+<div id="packet"></div>
+<div class="panes">
+  <div class="pane"><h3>Conversation</h3><div id="talk"></div></div>
+  <div class="pane"><h3>Inventory (provisional, live)</h3><div id="inv"></div></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

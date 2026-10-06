@@ -20,8 +20,9 @@ def reset():  # ponytail: process-global meter, one sweep at a time
 def add_tokens(model, usage):
     if usage is None:
         return
-    tin = (usage.prompt_token_count or 0)
-    tout = (usage.candidates_token_count or 0) + (getattr(usage, "thoughts_token_count", 0) or 0)
+    tin = getattr(usage, "prompt_token_count", 0) or 0
+    tout = ((getattr(usage, "candidates_token_count", 0) or getattr(usage, "response_token_count", 0) or 0)
+            + (getattr(usage, "thoughts_token_count", 0) or 0))  # generate_content vs Live naming
     with _lock:
         t = _tokens.setdefault(model, [0, 0])
         t[0] += tin
