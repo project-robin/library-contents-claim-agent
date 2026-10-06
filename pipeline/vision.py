@@ -58,12 +58,14 @@ issue: the main capture problem for reading spines in this frame, or "none"."""
 
 
 def _generate(model, parts, schema, prompt, thinking=None):
-    """Retries 429/5xx with backoff; after two 'high demand' failures switches to the fallback model."""
-    cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema, temperature=0,
-                                      thinking_config=types.ThinkingConfig(thinking_level=thinking) if thinking else None)
+    """Retries 429/5xx with backoff; after one 'high demand' failure switches to the fallback model."""
     for attempt in range(5):
         # the checker never falls back: its value is being a different model
-        m = settings.VISION_FALLBACK_MODEL if attempt >= 2 and model == settings.VISION_MODEL else model
+        m = settings.VISION_FALLBACK_MODEL if attempt >= 1 and model == settings.VISION_MODEL else model
+        # fallback runs at its default thinking: 'low' made flash-lite over-detect (27 boxes for 22 spines)
+        cfg = types.GenerateContentConfig(
+            response_mime_type="application/json", response_schema=schema, temperature=0,
+            thinking_config=types.ThinkingConfig(thinking_level=thinking) if thinking and m == model else None)
         try:
             resp = client().models.generate_content(model=m, contents=[*parts, prompt], config=cfg)
             metrics.add_tokens(m, resp.usage_metadata)

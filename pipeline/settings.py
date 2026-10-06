@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     LIVE_MODEL: str = "gemini-3.8-live"
     VISION_MODEL: str = "gemini-3.8-flash"
-    VISION_FALLBACK_MODEL: str = "gemini-flash-latest"  # used when the primary returns 503 "high demand"
+    VISION_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"  # on 503 "high demand": 2x faster, 18/20 titles vs 3.8 Flash
     VISION_THINKING: str = "low"
     CHECKER_MODEL: str = "gemini-pro-latest"
     LIVE_VOICE: str = "Kore"
