@@ -40,7 +40,7 @@ class Item(BaseModel):
 class FrameRead(BaseModel):
     spines: list[Spine]
     items: list[Item]
-    issue: Literal["", "blur", "glare", "too_far", "occluded", "dark"]
+    issue: Literal["none", "blur", "glare", "too_far", "occluded", "dark"]
 
 
 FRAME_PROMPT = """You are the vision sensor of an insurance inventory system. Report only what is visible in this one frame.
@@ -52,7 +52,7 @@ SPINES: one entry per book spine visible, including books lying flat or stacked 
 - marks: only visible physical evidence (e.g. "signed", "leather", "gilt", "first edition", "limited", "old binding").
 ITEMS: every non-book object (shelving units, furniture, lamps, framed art/portraits, rugs, electronics, appliances such as
 coffee machines, decor, plants). box_2d as above. brand_model only if a logo or model text is legible, else "".
-issue: the main capture problem for reading spines in this frame, or "" if none."""
+issue: the main capture problem for reading spines in this frame, or "none"."""
 
 
 def _generate(model, parts, schema, prompt):
@@ -72,7 +72,7 @@ def _img(jpeg):
 
 def read_frame(jpeg: bytes) -> dict:
     out = _generate(settings.VISION_MODEL, [_img(jpeg)], FrameRead, FRAME_PROMPT)
-    return out.model_dump() if out else {"spines": [], "items": [], "issue": ""}
+    return out.model_dump() if out else {"spines": [], "items": [], "issue": "none"}
 
 
 class CropText(BaseModel):
