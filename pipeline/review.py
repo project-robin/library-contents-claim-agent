@@ -1,0 +1,78 @@
+"""Review: independent checker on identified spines, then the rule list that builds the review queue."""
+from concurrent.futures import ThreadPoolExecutor
+
+from pipeline import settings, vision
+
+
+def checker(sweep_dir, books):
+    """A different model sees only the crop and the claim. Mismatch -> identity cleared (blank beats wrong)."""
+    todo = [b for b in books if b["title"] and not b["excluded"]]
+
+    def one(b):
+        return b, vision.check_identity((sweep_dir / b["crop"]).read_bytes(), b["title"], b["author"])
+
+    with ThreadPoolExecutor(8) as ex:
+        for b, v in ex.map(one, todo):
+            b["checker"] = v
+            if v["verdict"] == "mismatch":
+                b["checker_cleared"] = {"title": b["title"], "author": b["author"]}
+                b.update(title="", author="", edition="", isbn="", catalog=None)
+    return books
+
+
+def queue(geometry, books, items, book_prices, item_prices, book_stats):
+    q = []
+    add = lambda ref, reason: q.append({"ref_id": ref, "reason": reason})
+
+    if not geometry.get("scale"):
+        add("room", "no metric scale: marker not seen and too few measurable spines")
+    elif "prior" in geometry.get("scale_method", ""):
+        add("room", "scale from book-format prior only (marker not seen): all dimensions approximate")
+    for n in geometry.get("notes", []):
+        add("room", n)
+    if geometry.get("confidence", 0) < 0.6:
+        add("room", f"room measurement confidence {geometry.get('confidence', 0)}")
+    if "polygon" in geometry.get("shape_method", "") or "unseen" in geometry.get("shape_method", ""):
+        add("room", geometry["shape_method"])
+    if "warning" in book_stats:
+        add("books", book_stats["warning"])
+
+    heights = sorted(b["spine_height_cm"] for b in books if b["spine_height_cm"] and b["orientation"] == "upright")
+    if heights and not 14 <= heights[len(heights) // 2] <= 32:
+        add("room", f"scale cross-check failed: median upright spine {heights[len(heights) // 2]} cm is outside "
+                    "standard book formats (14-32 cm)")
+
+    for b in books:
+        if b["excluded"]:
+            continue
+        p = book_prices.get(b["id"], {})
+        if b.get("checker_cleared"):
+            add(b["id"], f"checker rejected '{b['checker_cleared']['title']}': {b['checker']['reason']}")
+        elif b.get("checker", {}).get("verdict") == "unsure":
+            add(b["id"], f"checker unsure: {b['checker']['reason']}")
+        if not b["title"] and not b.get("checker_cleared"):
+            add(b["id"], "spine not readable: logged as unidentified with dimensions only"
+                if not b["spine_text"]["title"] else
+                f"spine text '{b['spine_text']['title']}' did not match a catalogue record confidently")
+        elif b["title"] and b["id_confidence"] < settings.CONF_IDENTIFIED:
+            add(b["id"], f"low identification confidence {b['id_confidence']}")
+        for r in p.get("reasons", []):
+            add(b["id"], r)
+        if p.get("status") == "identified" and not p.get("replacement_cost"):
+            add(b["id"], "no retrievable replacement price: excluded from totals")
+        if p.get("status") == "identified" and not p.get("used_value"):
+            add(b["id"], "no retrievable used price: excluded from used total")
+        if b["spine_height_cm"] is None:
+            add(b["id"], "no depth at this spine: dimensions unavailable")
+        elif not 8 <= b["spine_height_cm"] <= 50:
+            add(b["id"], f"implausible spine height {b['spine_height_cm']} cm")
+
+    for it in items:
+        p = item_prices.get(it["id"], {})
+        for r in p.get("reasons", []):
+            add(it["id"], r)
+        if p.get("status") == "range" and p.get("replacement_cost"):
+            add(it["id"], "brand/model not visible: priced as a range of comparable items")
+        if it["confidence"] < 0.6:
+            add(it["id"], f"low detection confidence {it['confidence']}")
+    return q
