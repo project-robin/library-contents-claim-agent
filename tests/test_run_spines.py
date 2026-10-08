@@ -122,3 +122,10 @@ def test_failed_frame_read_is_skipped_not_fatal(tmp_path, monkeypatch):
     metrics.reset()
     assert run.read_missing(tmp_path, [{"frame": "000001.jpg"}]) == {}
     assert metrics.get("read_failures") == 1 and not (tmp_path / "reads" / "000001.jpg.json").exists()
+
+
+def test_no_sharp_frames_is_a_clear_error(tmp_path):
+    (tmp_path / "keyframes.json").write_text("[]")
+    (tmp_path / "sweep.json").write_text("{}")
+    with pytest.raises(ValueError, match="no sharp frames"):
+        run.run(tmp_path, start="reads", log=lambda s: None)

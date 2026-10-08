@@ -130,6 +130,8 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
             dump(sd / "keyframes.json", keyframes(sd, recompute_keyframes))
     kfs = load(sd / "keyframes.json")
     log(f"{len(kfs)} keyframes")
+    if not kfs:  # a 20 s clip, all blurred: 3D crashed on an empty list; say what happened instead
+        raise ValueError("no sharp frames in this sweep (too short or too much motion): film again, slowly")
 
     def timed(name, fn):
         with metrics.stage(name):
