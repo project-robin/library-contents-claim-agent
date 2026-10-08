@@ -50,3 +50,16 @@ def test_open_ring_rejected():
     t = rng.uniform(0, 1.5 * np.pi, 5000)  # three quarters of a wall ring
     xy = np.c_[2 * np.cos(t), 2 * np.sin(t)]
     assert room_polygon(xy) is None
+
+
+def test_streaky_home_print_marker_is_found():
+    """A printer low on ink streaked the black with white lines: raw detection found nothing."""
+    import cv2
+    from pipeline import geometry
+    det = cv2.aruco.ArucoDetector(geometry.ARUCO, cv2.aruco.DetectorParameters())
+    m = cv2.copyMakeBorder(cv2.aruco.generateImageMarker(geometry.ARUCO, 0, 600, borderBits=1),
+                           100, 100, 100, 100, cv2.BORDER_CONSTANT, value=255)
+    m[::22, :] = 255
+    m[1::22, :] = 255
+    assert det.detectMarkers(m)[1] is None
+    assert geometry.detect_marker(det, m)[1].ravel().tolist() == [0]

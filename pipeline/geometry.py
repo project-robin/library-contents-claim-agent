@@ -82,6 +82,16 @@ class Recon:
 
 # ---------- metric scale ----------
 
+def detect_marker(det, gray):
+    """Home printers low on ink leave white streaks across the black: the raw frame finds nothing, a median blur
+    of the right size does (a tester's two prints: id 0 at 3 px, id 1 at 5 px)."""
+    for k in (0, 3, 5, 9):
+        corners, ids, _ = det.detectMarkers(cv2.medianBlur(gray, k) if k else gray)
+        if ids is not None:
+            return corners, ids
+    return (), None
+
+
 def marker_scale_samples(sweep_dir, rec):
     """Each detected marker gives one scale sample: real side length / reconstructed side length."""
     det = cv2.aruco.ArucoDetector(ARUCO, cv2.aruco.DetectorParameters())
@@ -90,7 +100,7 @@ def marker_scale_samples(sweep_dir, rec):
         img = cv2.imread(str(sweep_dir / "frames" / f), cv2.IMREAD_GRAYSCALE)
         if img is None:
             continue
-        corners, ids, _ = det.detectMarkers(img)
+        corners, ids = detect_marker(det, img)
         for c in corners if ids is not None else []:
             c = c.reshape(4, 2)
             inset = c.mean(0) + INSET * (c - c.mean(0))
