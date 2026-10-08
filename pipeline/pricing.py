@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 
+import httpx
+
 from pipeline import drex, metrics, net, settings
 from pipeline.books import norm
 
@@ -252,7 +254,12 @@ def run(sweep_dir, books, items, country):
             elif not b["title"]:
                 p["status"] = "unidentified"
             else:
-                new, used = pr.book_new(b["title"], b["author"], country), pr.book_used(b["title"], b["author"], country)
+                try:
+                    new, used = pr.book_new(b["title"], b["author"], country), pr.book_used(b["title"], b["author"], country)
+                except httpx.HTTPError as e:  # Serper 504s outlast the retries: an unpriced line, not a dead packet
+                    metrics.count("price_failures")
+                    p["reasons"].append(f"price lookup failed ({type(e).__name__}): not priced")
+                    return p
                 over = [x for x in (new, used) if x and x["amount"] > thr]
                 if over:
                     p.update(status="needs_appraisal",
@@ -274,20 +281,28 @@ def run(sweep_dir, books, items, country):
             if it["category"] == "art" and it["is_print"] is not True:
                 p.update(status="needs_appraisal", reasons=["art defaults to appraisal unless the user confirms a print"])
             else:
-                rng, q = pr.item_range(it, country)
+                try:
+                    rng, q = pr.item_range(it, country)
+                except httpx.HTTPError as e:
+                    metrics.count("price_failures")
+                    rng, q = None, ""
+                    p["reasons"].append(f"price lookup failed ({type(e).__name__}): not priced")
                 p["query"] = q
                 if rng:
                     p.update(status="priced" if it["brand_model"] else "range", replacement_cost=rng)
-                else:
+                elif q:
                     p["reasons"].append(f"no retrievable price for query '{q}'")
             out_items[it["id"]] = p
 
         comparison = []
         other = settings.COMPARISON_COUNTRY if settings.COMPARISON_COUNTRY != country else "GB"
         for b in [b for b in books if out_books.get(b["id"], {}).get("replacement_cost")][:10]:
-            comparison.append({"id": b["id"], "title": b["title"],
-                               country: out_books[b["id"]]["replacement_cost"],
-                               other: pr.book_new(b["title"], b["author"], other)})
+            try:
+                comparison.append({"id": b["id"], "title": b["title"],
+                                   country: out_books[b["id"]]["replacement_cost"],
+                                   other: pr.book_new(b["title"], b["author"], other)})
+            except httpx.HTTPError:
+                metrics.count("price_failures")
     finally:
         pr.save()
     return {"books": out_books, "items": out_items,

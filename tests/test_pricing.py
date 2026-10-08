@@ -87,3 +87,19 @@ def test_used_and_import_sellers_are_not_new_prices():
     assert used_listing("Some Shop", "Cross Country (Used - Good)")
     assert not used_listing("amazon.in", "Cross Country")
     assert not used_listing("Crossword Bookstores", "The Usual Suspects")  # 'used' only as a whole word
+
+
+def test_price_lookup_failure_leaves_line_unpriced(tmp_path, monkeypatch, fake_drex):
+    """Serper 504s that outlast the retries: the book is unpriced and goes to review; the packet still builds."""
+    import httpx
+
+    def down(self, q, gl):
+        raise httpx.HTTPStatusError("504", request=httpx.Request("POST", "https://google.serper.dev/shopping"),
+                                    response=httpx.Response(504))
+    monkeypatch.setattr(pricing.Pricer, "shopping", down)
+    monkeypatch.setattr(pricing.Pricer, "ebay_used", lambda self, q, m: {"retrieved_at": "", "results": []})
+    b = {"id": "b_0", "title": "Killing Floor", "author": "Lee Child", "excluded": False, "marks": [], "notes": []}
+    out = pricing.run(tmp_path, [b], [], "IN")
+    p = out["books"]["b_0"]
+    assert p["status"] == "identified" and "replacement_cost" not in p
+    assert p["reasons"] == ["price lookup failed (HTTPStatusError): not priced"]

@@ -149,3 +149,20 @@ def test_catalogue_timeout_is_no_candidates_not_a_dead_packet(monkeypatch):
         raise httpx.ReadTimeout("The read operation timed out")
     monkeypatch.setattr(net, "request", boom)
     assert books._gbooks("Tripwire", "Lee Child") == [] and books._openlibrary("Tripwire", "Lee Child") == []
+
+
+def test_checker_failure_is_unsure_not_a_dead_packet(tmp_path, monkeypatch):
+    """The checker's daily quota running out mid-sweep sends those books to review instead of raising."""
+    (tmp_path / "a.jpg").write_bytes(b"x")
+    bs = [{"id": f"b_{i}", "title": t, "author": "", "excluded": False, "crop": "a.jpg"}
+          for i, t in enumerate(["Killing Floor", "Die Trying"])]
+
+    def check(crop, title, author):
+        if title == "Die Trying":
+            raise RuntimeError("429 RESOURCE_EXHAUSTED")
+        return {"verdict": "match", "reason": "ok"}
+    monkeypatch.setattr(vision, "check_identity", check)
+    review.checker(tmp_path, bs)
+    assert bs[0]["checker"]["verdict"] == "match"
+    assert bs[1]["checker"] == {"verdict": "unsure", "reason": "checker unavailable (RuntimeError)"}
+    assert bs[1]["title"] == "Die Trying"  # unsure keeps the identity; review.queue flags it

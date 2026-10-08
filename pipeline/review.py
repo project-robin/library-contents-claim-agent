@@ -1,15 +1,21 @@
 """Review: independent checker on identified spines, then the rule list that builds the review queue."""
 from concurrent.futures import ThreadPoolExecutor
 
-from pipeline import settings, vision
+from pipeline import metrics, settings, vision
 
 
 def checker(sweep_dir, books):
-    """A different model sees only the crop and the claim. Mismatch -> identity cleared (blank beats wrong)."""
+    """A different model sees only the crop and the claim. Mismatch -> identity cleared (blank beats wrong).
+    A failed check (spent daily quota, outage) is 'unsure', so the book goes to review: on a replay the checker's
+    500/day free quota ran out mid-sweep and killed a packet whose books were already built."""
     todo = [b for b in books if b["title"] and not b["excluded"]]
 
     def one(b):
-        return b, vision.check_identity((sweep_dir / b["crop"]).read_bytes(), b["title"], b["author"])
+        try:
+            return b, vision.check_identity((sweep_dir / b["crop"]).read_bytes(), b["title"], b["author"])
+        except Exception as e:  # noqa: BLE001 - any failure of the audit is 'not audited', never a dead packet
+            metrics.count("checker_failures")
+            return b, {"verdict": "unsure", "reason": f"checker unavailable ({type(e).__name__})"}
 
     with ThreadPoolExecutor(8) as ex:
         for b, v in ex.map(one, todo):
