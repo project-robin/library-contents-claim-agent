@@ -22,6 +22,7 @@ from pipeline import run as pipeline
 from pipeline.books import norm
 
 log = logging.getLogger("sweep")
+PHONE_SILENT_S = 30  # ponytail: fixed; the mic sends every 0.1 s, so 30 s of nothing is a frozen or gone phone
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 STATIC = Path(__file__).parent / "static"
 settings.require("live")
@@ -137,12 +138,24 @@ class Session:
             pass
         finally:
             self.closed = True
+            self.finish_if_filmed("phone disconnected")
             tasks[0].cancel()
             self.frames_log.close()
 
+    def finish_if_filmed(self, why):
+        """A phone froze after 100 s of filming and 'End sweep' never arrived: no packet at all. Without an end
+        message, a silent phone (the mic streams every 0.1 s while alive) or a dropped socket ends the sweep."""
+        if not self.ended and any((self.dir / "frames").iterdir()):
+            log.info("sweep %s ended without End sweep: %s", self.id, why)
+            asyncio.create_task(self.finish())
+
     async def browser_loop(self):
         while True:
-            msg = await self.ws.receive()
+            try:
+                msg = await asyncio.wait_for(self.ws.receive(), PHONE_SILENT_S)
+            except asyncio.TimeoutError:
+                self.finish_if_filmed(f"nothing from the phone for {PHONE_SILENT_S} s")
+                continue
             if msg["type"] == "websocket.disconnect":
                 return
             if msg.get("bytes"):
