@@ -266,9 +266,15 @@ def _failed():
     return Unavailable()
 
 
+_gbooks_spent = False  # ponytail: one flag per process; the daily quota resets overnight, a new run tries again
+
+
 def _gbooks(title, author, free=False):
     """free=True: plain-text query. intitle:/inauthor: returns nothing for some Indian editions ('An Unsuitable Boy',
     'Dream With Your Eyes Open' with a misspelt author) that a plain query finds first."""
+    global _gbooks_spent
+    if _gbooks_spent:  # daily quota gone: each call would still pay ~7 s of retries for a 429
+        return _failed()
     q = f"{title} {author}".strip() if free else f"intitle:{title}" + (f" inauthor:{author}" if author else "")
     params = {"q": q, "maxResults": 5, "printType": "books"}
     key = settings.GOOGLE_BOOKS_API_KEY or settings.GEMINI_API_KEY  # same Google Cloud project once Books API is on
@@ -279,6 +285,7 @@ def _gbooks(title, author, free=False):
     except httpx.TransportError:  # still timing out after net's retries (rate-limited): no candidates, not a dead packet
         return _failed()
     if r.status_code != 200:
+        _gbooks_spent = r.status_code == 429 and "per day" in r.text
         return _failed()
     out = []
     for it in r.json().get("items", []):

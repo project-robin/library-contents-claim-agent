@@ -169,6 +169,22 @@ def test_failed_catalogue_is_not_cached_as_no_such_book(monkeypatch):
     assert [v["cands"] for v in cache.values()] == [[], []]
 
 
+def test_spent_daily_quota_skips_google_books(monkeypatch):
+    """After a 'Queries per day' 429, Google Books is not called again in this run; Open Library still is."""
+    import httpx
+    from pipeline import net
+    calls = []
+
+    def req(m, url, **k):
+        calls.append(url)
+        return httpx.Response(429, text="Quota exceeded for limit 'Queries per day'", request=httpx.Request(m, url))
+    monkeypatch.setattr(net, "request", req)
+    monkeypatch.setattr(books, "_gbooks_spent", False)
+    books._gbooks("Wild Wind", "")
+    books._gbooks("Hema Malini", "")
+    assert sum("googleapis" in u for u in calls) == 1
+
+
 def test_checker_failure_is_unsure_not_a_dead_packet(tmp_path, monkeypatch):
     """The checker's daily quota running out mid-sweep sends those books to review instead of raising."""
     (tmp_path / "a.jpg").write_bytes(b"x")
