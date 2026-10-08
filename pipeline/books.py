@@ -9,6 +9,7 @@ import re
 from collections import Counter
 
 import cv2
+import httpx
 import numpy as np
 
 from concurrent.futures import ThreadPoolExecutor
@@ -262,7 +263,11 @@ def _gbooks(title, author, free=False):
     key = settings.GOOGLE_BOOKS_API_KEY or settings.GEMINI_API_KEY  # same Google Cloud project once Books API is on
     if key:
         params["key"] = key
-    r = net.request("GET", "https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
+    try:
+        r = net.request("GET", "https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
+    except httpx.TransportError:  # still timing out after net's retries (rate-limited): no candidates, not a dead packet
+        metrics.count("catalog_failures")
+        return []
     out = []
     for it in r.json().get("items", []) if r.status_code == 200 else []:
         v = it["volumeInfo"]
@@ -276,10 +281,14 @@ def _gbooks(title, author, free=False):
 def _openlibrary(title, author):
     fields = "title,subtitle,author_name,publisher,first_publish_year,isbn,key"
     params = {"title": title, "limit": 5, "fields": fields} | ({"author": author} if author else {})
-    r = net.request("GET", "https://openlibrary.org/search.json", params=params, timeout=20)
-    if r.status_code == 200 and not r.json().get("docs"):  # fall back to free text
-        r = net.request("GET", "https://openlibrary.org/search.json", timeout=20,
-                      params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
+    try:
+        r = net.request("GET", "https://openlibrary.org/search.json", params=params, timeout=20)
+        if r.status_code == 200 and not r.json().get("docs"):  # fall back to free text
+            r = net.request("GET", "https://openlibrary.org/search.json", timeout=20,
+                            params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
+    except httpx.TransportError:
+        metrics.count("catalog_failures")
+        return []
     out = []
     for d in r.json().get("docs", []) if r.status_code == 200 else []:
         isbn = next((i for i in d.get("isbn", []) if len(i) == 13), "")

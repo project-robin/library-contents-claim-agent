@@ -138,3 +138,14 @@ def test_claim_without_ocr_support_is_kept_but_sent_to_review(tmp_path, monkeypa
     q = review.queue({"scale": None}, bs, [], {}, {}, {})
     assert {"ref_id": bs[0]["id"], "reason": "title from vision model only, no OCR support"} in q
     assert not any(r["ref_id"] == bs[1]["id"] and "OCR" in r["reason"] for r in q)
+
+
+def test_catalogue_timeout_is_no_candidates_not_a_dead_packet(monkeypatch):
+    """A replay died here: Google Books rate-limited, then read timeouts outlasted net's retries."""
+    import httpx
+    from pipeline import net
+
+    def boom(*a, **k):
+        raise httpx.ReadTimeout("The read operation timed out")
+    monkeypatch.setattr(net, "request", boom)
+    assert books._gbooks("Tripwire", "Lee Child") == [] and books._openlibrary("Tripwire", "Lee Child") == []
