@@ -27,7 +27,9 @@ async function startMic(stream) {
   await micCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([MIC_WORKLET], { type: 'text/javascript' })));
   const node = new AudioWorkletNode(micCtx, 'mic');
   node.port.onmessage = (e) => {
-    if (ws.readyState !== 1) return;
+    // ponytail: half-duplex. No echo cancellation (it forces Android's quiet call mode), so the mic is not sent
+    // while the agent speaks or it hears itself; the user can speak once it stops (replies are 1-2 sentences).
+    if (ws.readyState !== 1 || outCtx.currentTime < playHead + 0.3) return;
     const f = e.data, pcm = new Int16Array(f.length);
     for (let i = 0; i < f.length; i++) pcm[i] = Math.max(-1, Math.min(1, f[i])) * 0x7fff;
     ws.send(tagged(1, pcm.buffer));
@@ -117,7 +119,7 @@ $('#start').onclick = async () => {
   $('#start').disabled = true;
   outCtx = new AudioContext({ sampleRate: 24000 });
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },  // loudspeaker
     video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
   });
   $('#video').srcObject = stream;

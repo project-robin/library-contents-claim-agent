@@ -86,5 +86,7 @@ No model is trained or fine-tuned. No catalogue, price list or room dimensions a
 - **Appraisal triggers**: visible or stated signed / first edition / limited / leather / gilt / old binding, or a
   retrieved price above the threshold (₹5,000 / $75 / £60). These lines are not priced. Publication year alone is
   not a trigger, because the catalogue year belongs to the work, not the copy.
+- **Voice is half-duplex on the phone.** Echo cancellation puts Android Chrome in quiet call mode (earpiece), so it is
+  off and the mic is paused while the agent speaks. The user corrects the agent once it stops (replies are 1-2 sentences).
 - **Shelf** = unit letter + row from the top (`B-3`). **Position** counts along the shelf.
 - **Shelved wall area** = sum of the front faces (width × height) of the detected shelving units.
