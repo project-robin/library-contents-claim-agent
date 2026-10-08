@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     EBAY_CLIENT_ID: str = ""
     EBAY_CLIENT_SECRET: str = ""
     GOOGLE_BOOKS_API_KEY: str = ""  # optional, raises quota
+    META_API_KEY: str = ""  # SAM 3.1 spine segmentation (pipeline/sam.py); empty -> spines from the vision model
+    META_BASE_URL: str = "https://api.meta.ai/v1"
 
     LIVE_MODEL: str = "gemini-3.8-live"
     VISION_MODEL: str = "gemini-3.8-flash"
@@ -27,6 +29,10 @@ class Settings(BaseSettings):
     VISION_TIMEOUT_S: int = Field(120, ge=10)  # a dense close-up once ran past 4 min on 3.8 Flash; then fall back
     CHECKER_MODEL: str = "gemini-pro-latest"
     LIVE_VOICE: str = "Kore"
+    SAM_MODEL: str = "sam-3.1"
+    SAM_PROMPT: str = "book spine"  # one short noun phrase; a comma list returns nothing
+    SPINE_SOURCE: str = "sam"  # sam | gemini ("gemini" = old behaviour, also the automatic fallback when SAM fails)
+    SAM_CONCURRENCY: int = Field(8, ge=1)
     RECON_MODEL: str = "mapanything"  # mapanything | vggt (both on Modal; pick by the geometry spike)
 
     SWEEPS_DIR: Path = Path("sweeps")
@@ -67,6 +73,7 @@ class Settings(BaseSettings):
     RATE_DREX_IN: float = 0.5
     SERPER_COST_PER_QUERY: float = 0.001
     GPU_COST_PER_S: float = 0.00054  # Modal L40S
+    SAM_COST_PER_IMAGE: float = 0.0  # placeholder: no list price published for SAM 3.1 on the Meta API yet
     OCR_COST_PER_S: float = 0.0001  # Modal CPU container, 4 cores (unverified list price; ~$0.0000131/core/s)
 
 
