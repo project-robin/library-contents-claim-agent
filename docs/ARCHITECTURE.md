@@ -13,12 +13,48 @@
                                              └──────────────┬───────────────────────────────┘
                                                             │ end_sweep
  pipeline/run.py  (each stage: JSON in -> JSON out, rerunnable with --from)
- keyframes ─► reads (Flash) ─┐
-          └─► recon (VGGT on Modal GPU) ─► geometry ─► books ─► checker ─► items ─► pricing ─► packet
-                                            scale       dedup     audit     dims    Serper    totals (Decimal)
-                                            floor/ceil  shelves   (Pro)             eBay, FX  review queue
-                                            room shape  dims, ID                              JSON + HTML + SVG
+ keyframes ─┬─► reads (Gemini Flash: items, reader claims) ───────────────┐
+            ├─► spines (SAM 3.1, Meta API, one box per spine) ──────────┤
+            └─► recon (MapAnything/VGGT on Modal GPU) ─► geometry ─► books ─► checker ─► items ─► pricing ─► packet
+                                                          scale       dedup     audit     dims    Serper    totals (Decimal)
+                                                          floor/ceil  shelves   (crop)            eBay, FX  review queue
+                                                          room shape  dims, ID                              JSON + HTML + SVG
+
+ books, per spine:  SAM box ─► crop ─► PP-OCRv5 words (Modal CPU) ─┬─► claim confirmed / vetoed by its own words
+                    Gemini spine with IoU ≥ 0.3 = reader claim ────┘   no claim / vetoed: OCR fragments ─► catalogue ─► DREX
+                    still unidentified ─► Gemini crop reader (its OCR words must agree; none readable: capped, review)
 ```
+
+## How a spine is found and named
+
+Spines come from **SAM 3.1** (Meta API, prompt `book spine`), one image call per keyframe. SAM's video mode tracks at
+most 16 objects per frame, fewer than one shelf holds, so the pipeline uses image mode and links spines across frames
+itself (3D clustering below). SAM gives one tight box per spine. Gemini's boxes drift onto the neighbouring spine, so a
+crop cut from them can show the wrong book: that capped the earlier OCR-on-Gemini-boxes design (FAILURE_LOG #3).
+
+Each spine's identity must come from evidence on **its own crop**:
+1. **OCR witness.** PP-OCRv5 reads the crop at 90° and 270° (and 0° when the crop is wider than tall). A detector +
+   recognizer cannot invent a title; it can only misspell what is printed. Words repeated across the whole sweep
+   (series names, publisher logos) are ignored.
+2. **Reader claim.** The Gemini frame read is matched to SAM boxes by IoU ≥ 0.3. Its title is a claim: resolved
+   against the catalogue, then confirmed or vetoed by the OCR words (a veto needs 4+ character tokens at ≥ 0.9).
+   A claim the OCR words neither confirm nor veto is kept at `CONF_MIN` and sent to review ("title from vision model
+   only, no OCR support"). Unmatched Gemini spines are dropped; they have no box to show.
+3. **Fragments.** With no claim, or a vetoed one, the OCR words alone go to the catalogue and DREX. The top match
+   must beat the runner-up by a clear margin.
+4. **Crop reader.** Every spine still unidentified (and not excluded) goes to Gemini as a single crop, 12 per call.
+   Its title must agree with the crop's own OCR words, and a disagreement rejects it; when OCR read no usable words it
+   is kept at `CONF_MIN` and sent to review.
+
+`id_source` in each book line records which path named it: `spine_read`, `ocr_fragments` or `crop_reader`.
+
+**Fallbacks.** `SPINE_SOURCE=gemini`, a missing `META_API_KEY` or a SAM failure falls back to Gemini's spine boxes,
+with the review note "spines from vision model". Still photos have no geometry: each detection is its own book and
+shelf/position come from box order (rows by vertical overlap, top to bottom, then left to right).
+
+**Outside services failing.** A catalogue lookup that times out after its retries returns no candidates, a price
+lookup that fails leaves the line unpriced with a review reason, and a failed identity check (e.g. the checker's free
+daily quota spent) is verdict `unsure`. Each sends lines to review instead of killing a packet whose books are built.
 
 ## Which model does what
 
@@ -26,12 +62,14 @@
 |---|---|---|
 | Conversation, directing the sweep, voice corrections | Gemini Live (native audio) | tool calls → `notes.jsonl` |
 | Blur, glare, motion | OpenCV (Laplacian variance, saturated pixels, frame difference) | nudges into the Live session |
-| Spine boxes, spine text, item boxes/categories | Gemini 3.8 Flash, schema-constrained JSON, temperature 0 | `reads/*.json` |
-| Close re-read of uncertain spines | Gemini Flash on crops | votes |
+| Spine boxes (one per spine) | SAM 3.1 via the Meta API, image mode, prompt `book spine` | `spines/*.json` |
+| Printed words on each spine crop | PP-OCRv5 server (PaddleOCR 3.7.0, paddlepaddle 3.2.0), Modal CPU app `library-claim-ocr` | `ocr.json` |
+| Spine text claims, item boxes/categories | Gemini 3.8 Flash (3.5 Flash-Lite fallback), schema-constrained JSON, temperature 0 | `reads/*.json` |
+| Spines still unidentified after OCR | Gemini Flash on single crops, kept only if the crop's OCR words agree | `id_source: crop_reader` |
 | Camera poses + per-pixel depth | MapAnything (metric, Apache) or VGGT-1B on Modal | `recon.npz` |
 | Identity | Google Books / Open Library candidates → DREX P(same work) | `id_confidence` (calibrated) |
 | Listing match, appraisal | DREX yes/no probabilities | offers kept at P ≥ 0.8; appraisal at P ≥ 0.5 |
-| Identity audit | Gemini Pro on the crop and the claim | mismatches cleared to blank |
+| Identity audit | `CHECKER_MODEL` (Gemini) on the crop and the claim | mismatches cleared to blank; failed check = `unsure` |
 | Prices | Serper Google Shopping, eBay Browse, Frankfurter FX: **no LLM** | `prices.json` |
 | Totals | Python `Decimal` | `claim_packet.json` |
 

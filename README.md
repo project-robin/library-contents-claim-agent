@@ -17,11 +17,15 @@ accounts for Gemini, Serper and Modal (eBay is optional).
 ```bash
 git clone <repo> && cd <repo>
 uv sync                                   # Python 3.12 + deps; no torch locally
-cp .env.example .env                      # add GEMINI_API_KEY, SERPER_API_KEY, DREX_API_KEY (+ eBay)
+cp .env.example .env                      # add GEMINI_API_KEY, SERPER_API_KEY, DREX_API_KEY, META_API_KEY (+ eBay)
 uv run modal token new                    # once, opens browser
 uv run modal deploy gpu/modal_recon.py    # GPU reconstruction service (first build ~5 min)
+uv run modal deploy gpu/modal_ocr.py      # spine OCR on CPU (PP-OCRv5); ~20 s cold start, warmed at sweep start
 uv run python -m pipeline.marker          # -> assets/aruco_markers_A4.pdf
 ```
+
+`META_API_KEY` gives spine boxes from SAM 3.1. Without it (or with `SPINE_SOURCE=gemini`) the pipeline uses Gemini's
+spine boxes and notes it in the review queue.
 
 Print the marker PDF at **100% / actual size**. Measure the black square with a ruler and set `MARKER_SIZE_CM` in
 `.env`, because printers rescale.
@@ -52,9 +56,12 @@ uv run pytest                                             # offline tests incl. 
 | Purpose | Tool |
 |---|---|
 | Live voice + camera agent | Gemini Live (`gemini-3.1-flash-live-preview`) via `google-genai` |
-| Spine/item detection + transcription | Gemini Flash, JSON schema output |
-| Independent identity check | Gemini Pro (different model; same vendor, noted as a limit) |
-| Camera poses + depth | VGGT-1B (Meta, pretrained) on a Modal L40S GPU |
+| Spine boxes (one per spine) | SAM 3.1 (Meta API, image mode, prompt `book spine`) |
+| Words printed on each spine | PP-OCRv5 server (PaddleOCR 3.7.0, Apache-2.0) on a Modal CPU container |
+| Item detection, spine text claims, unreadable crops | Gemini Flash, JSON schema output |
+| Independent identity check | Gemini (`CHECKER_MODEL`, on the crop; same vendor, noted as a limit) |
+| Identity / listing match decisions | DREX calibrated yes/no probabilities |
+| Camera poses + depth | MapAnything or VGGT-1B (Meta, pretrained) on a Modal GPU |
 | Metric scale | Printed ArUco marker (OpenCV), with a cross-check against standard book formats |
 | Book identity | Google Books API, Open Library |
 | New prices | Google Shopping via Serper.dev (per-country `gl`) |
