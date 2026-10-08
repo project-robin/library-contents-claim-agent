@@ -105,7 +105,8 @@ def fragment_lookup(toks, author, cache):
     key = f"ocrfrag|{q}|{books.norm(author)}"
     if key not in cache:
         _, a = books.search_terms(q, author)
-        cands = books._gbooks(q, a, free=True) + books._openlibrary(q, a)
+        calls = [books._gbooks(q, a, free=True), books._openlibrary(q, a)]
+        cands = calls[0] + calls[1]
         seen, keep = set(), []
         for c in cands:
             n = supports(c["title"], toks)  # title only: subtitles carry series text ('A Jack Reacher Thriller')
@@ -120,8 +121,12 @@ def fragment_lookup(toks, author, cache):
                      "catalogue_candidates": {f"c{i}": {k: c[k] for k in ("title", "subtitle", "authors", "publisher", "year")}
                                               for i, c in enumerate(keep)}}
             probs = drex.ask(state, {f"c{i}": books.SAME_WORK_Q.format(c=f"c{i}") for i in range(len(keep))})
-        cache[key] = {"cands": keep, "probs": probs}
-    keep, probs = cache[key]["cands"], cache[key]["probs"]
+        entry = {"cands": keep, "probs": probs}
+        if not any(isinstance(c, books.Unavailable) for c in calls):  # a failed catalogue is not 'no such book'
+            cache[key] = entry
+    else:
+        entry = cache[key]
+    keep, probs = entry["cands"], entry["probs"]
     if not keep:
         return None, 0.0, toks
     ranked = sorted(range(len(keep)), key=lambda i: -probs.get(f"c{i}", 0))

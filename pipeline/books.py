@@ -255,6 +255,17 @@ def search_terms(title, author):
     return t, re.sub(r"\s+", " ", a)
 
 
+class Unavailable(list):
+    """No candidates because the catalogue failed (429 after retries, timeout), not because the book is unknown.
+    Never cached: Google Books' daily quota ran out on photo A and 'Wild Wind', 'Hema Malini' and 'Test the Sky with
+    Glory' were cached as 'no such book'."""
+
+
+def _failed():
+    metrics.count("catalog_failures")
+    return Unavailable()
+
+
 def _gbooks(title, author, free=False):
     """free=True: plain-text query. intitle:/inauthor: returns nothing for some Indian editions ('An Unsuitable Boy',
     'Dream With Your Eyes Open' with a misspelt author) that a plain query finds first."""
@@ -266,10 +277,11 @@ def _gbooks(title, author, free=False):
     try:
         r = net.request("GET", "https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
     except httpx.TransportError:  # still timing out after net's retries (rate-limited): no candidates, not a dead packet
-        metrics.count("catalog_failures")
-        return []
+        return _failed()
+    if r.status_code != 200:
+        return _failed()
     out = []
-    for it in r.json().get("items", []) if r.status_code == 200 else []:
+    for it in r.json().get("items", []):
         v = it["volumeInfo"]
         isbn = next((x["identifier"] for x in v.get("industryIdentifiers", []) if x["type"] == "ISBN_13"), "")
         out.append({"title": v.get("title", ""), "subtitle": v.get("subtitle", ""), "authors": v.get("authors", []),
@@ -287,10 +299,11 @@ def _openlibrary(title, author):
             r = net.request("GET", "https://openlibrary.org/search.json", timeout=20,
                             params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
     except httpx.TransportError:
-        metrics.count("catalog_failures")
-        return []
+        return _failed()
+    if r.status_code != 200:
+        return _failed()
     out = []
-    for d in r.json().get("docs", []) if r.status_code == 200 else []:
+    for d in r.json().get("docs", []):
         isbn = next((i for i in d.get("isbn", []) if len(i) == 13), "")
         out.append({"title": d.get("title", ""), "subtitle": d.get("subtitle", ""), "authors": d.get("author_name", []),
                     "publisher": (d.get("publisher") or [""])[0], "year": str(d.get("first_publish_year", "")),
@@ -314,11 +327,12 @@ def resolve(title, author, publisher, agreement, cache):
     if key not in cache:
         st, sa = search_terms(title, author)
         good = lambda cs: max((score(title, author, agreement, c) for c in cs), default=0) >= 0.8
-        cands = _gbooks(st, sa)
-        if not good(cands):
-            cands += _gbooks(st, sa, free=True)
-        if not good(cands):
-            cands += _openlibrary(st, sa)
+        calls = [_gbooks(st, sa)]
+        if not good(calls[0]):
+            calls.append(_gbooks(st, sa, free=True))
+        if not good(calls[0] + calls[-1]):
+            calls.append(_openlibrary(st, sa))
+        cands = [c for call in calls for c in call]
         seen = set()
         cands = [c for c in cands if not (c["url"] in seen or seen.add(c["url"]))]
         cands = sorted(cands, key=lambda c: -score(title, author, agreement, c))[:8]
@@ -329,8 +343,15 @@ def resolve(title, author, publisher, agreement, cache):
                      "catalogue_candidates": {f"c{i}": {k: c[k] for k in ("title", "subtitle", "authors", "publisher", "year")}
                                               for i, c in enumerate(cands)}}
             probs = drex.ask(state, {f"c{i}": SAME_WORK_Q.format(c=f"c{i}") for i in range(len(cands))})
-        cache[key] = {"cands": cands, "probs": probs}
-    cands, probs = cache[key]["cands"], cache[key]["probs"]
+        entry = {"cands": cands, "probs": probs}
+        if any(isinstance(c, Unavailable) for c in calls):
+            return pick(title, author, entry)  # a failed source: answer this spine, ask again next time
+        cache[key] = entry
+    return pick(title, author, cache[key])
+
+
+def pick(title, author, entry):
+    cands, probs = entry["cands"], entry["probs"]
     if not cands:
         return None, 0.0, False
     if author_only(title, author, cands):

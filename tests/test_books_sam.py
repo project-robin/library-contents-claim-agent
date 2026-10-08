@@ -151,6 +151,24 @@ def test_catalogue_timeout_is_no_candidates_not_a_dead_packet(monkeypatch):
     assert books._gbooks("Tripwire", "Lee Child") == [] and books._openlibrary("Tripwire", "Lee Child") == []
 
 
+def test_failed_catalogue_is_not_cached_as_no_such_book(monkeypatch):
+    """Google Books' daily quota (429) cached 'Wild Wind' as unknown on photo A; a real empty answer is cached."""
+    import httpx
+    from pipeline import net
+    status = {"code": 429}
+    monkeypatch.setattr(net, "request", lambda m, url, **k: httpx.Response(
+        status["code"], json={"items": [], "docs": []}, request=httpx.Request(m, url)))
+    cache = {}
+    assert books.resolve("Wild Wind", "Taslima Nasrin", "", 1.0, cache) == (None, 0.0, False)
+    assert isinstance(books._gbooks("Wild Wind", ""), books.Unavailable)
+    assert spine_ocr.fragment_lookup(["wild", "wind"], "", cache)[0] is None
+    assert cache == {}
+    status["code"] = 200
+    books.resolve("Wild Wind", "Taslima Nasrin", "", 1.0, cache)
+    spine_ocr.fragment_lookup(["wild", "wind"], "", cache)
+    assert [v["cands"] for v in cache.values()] == [[], []]
+
+
 def test_checker_failure_is_unsure_not_a_dead_packet(tmp_path, monkeypatch):
     """The checker's daily quota running out mid-sweep sends those books to review instead of raising."""
     (tmp_path / "a.jpg").write_bytes(b"x")
