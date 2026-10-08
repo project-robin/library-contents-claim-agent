@@ -53,3 +53,28 @@ def test_fragments_pick_the_book_that_contains_them(monkeypatch):
     assert c["title"] == "Hercule Poirot's Christmas" and p == 0.93 and used == ["hercule", "poiro", "christm"]
     titles = [x["title"] for x in asked["catalogue_candidates"].values()]
     assert "The Mysterious Affair at Styles" not in titles  # contains none of the fragments: never shown to DREX
+
+
+def test_editions_of_one_work_are_not_rivals(monkeypatch):
+    def cand(title):
+        return {"title": title, "subtitle": "", "authors": ["Agatha Christie"], "publisher": "", "year": "", "isbn": "",
+                "url": title, "source": "stub"}
+    monkeypatch.setattr(books, "_gbooks", lambda t, a, free=False: [cand("Curtain: Poirot's Last Case"),
+                                                                    cand("Curtain: Poirot’s Last Case (Poirot)")])
+    monkeypatch.setattr(books, "_openlibrary", lambda t, a: [])
+    monkeypatch.setattr(drex, "ask", lambda state, qs: {"c0": 0.99, "c1": 0.98})
+    c, p, _ = spine_ocr.fragment_lookup(["last", "case", "curtain", "poirots"], "", {})
+    assert c["title"] == "Curtain: Poirot's Last Case" and p == 0.99  # two editions, one work: a clear winner
+    assert not spine_ocr.same_work("Curtain", "Curtain Call")
+
+
+def test_one_long_fragment_can_name_a_book(monkeypatch):
+    def cand(title):
+        return {"title": title, "subtitle": "", "authors": ["Lee Child"], "publisher": "", "year": "", "isbn": "",
+                "url": title, "source": "stub"}
+    monkeypatch.setattr(books, "_gbooks", lambda t, a, free=False: [cand("Tripwire"), cand("Die Trying")])
+    monkeypatch.setattr(books, "_openlibrary", lambda t, a: [])
+    asked = {}
+    monkeypatch.setattr(drex, "ask", lambda state, qs: asked.update(state) or {"c0": 0.9})
+    c, p, _ = spine_ocr.fragment_lookup(["tripwire"], "", {})
+    assert c["title"] == "Tripwire" and len(asked["catalogue_candidates"]) == 1  # 'Die Trying' lacks the word

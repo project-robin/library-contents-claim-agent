@@ -57,14 +57,16 @@ def test_crop_reader_rules(monkeypatch):
     stub_catalogue(monkeypatch)
     t = {"title": "Curtain", "author": "Agatha Christie", "publisher": "", "legibility": "partial"}
     words = lambda *ws: {"words": [[w, 0.5, 90] for w in ws], "rotation": 90}
-    cand, conf, support = books.crop_reader(t, words("CURTAI"), {})
+    cand, conf, support = books.crop_reader(t, words("CURTAI"), set(), {})
     assert cand["title"] == "Curtain" and conf == 0.95 and support  # OCR fragment supports the title
-    assert books.crop_reader(t, words("FROG"), {})[0] is None  # OCR contradicts: rejected
-    cand, conf, support = books.crop_reader(t, words(), {})
+    assert books.crop_reader(t, words("FROG"), set(), {})[0] is None  # OCR contradicts: rejected
+    cand, conf, support = books.crop_reader(t, words(), set(), {})
     assert cand and conf == settings.CONF_MIN and not support  # OCR read nothing: capped, sent to review
-    cand, conf, support = books.crop_reader(t, words("AGATHA", "CHRISTIE"), {})
+    cand, conf, support = books.crop_reader(t, words("AGATHA", "CHRISTIE"), set(), {})
     assert cand and conf == settings.CONF_MIN and not support  # only the author's name: neither for nor against
-    assert books.crop_reader({**t, "title": ""}, words(), {})[0] is None
+    assert books.crop_reader({**t, "title": ""}, words(), set(), {})[0] is None
+    cand, conf, support = books.crop_reader(t, words("REACHER"), {"reacher"}, {})
+    assert cand and conf == settings.CONF_MIN and not support  # shelf boilerplate: neither for nor against
 
 
 def test_still_photo_with_sam_spines(tmp_path, monkeypatch):
@@ -92,7 +94,7 @@ def test_still_photo_with_sam_spines(tmp_path, monkeypatch):
     assert [b["id_source"] for b in bs] == ["spine_read", "ocr_fragments", "crop_reader", "", ""]
     assert bs[1]["ocr_veto"] == "Die Trying"  # the claim the spine's own words contradict
     assert bs[2]["id_confidence"] == settings.CONF_MIN and not bs[2]["ocr_support"]
-    assert sent == [2]  # crop reader saw only the two crops with no distinctive OCR words (sam 0 and 3)
+    assert sent == [3]  # every unidentified crop; 'XQZT' and 'FROG' contradict the reader's 'Curtain': rejected
     assert [b["legibility"] for b in bs] == ["partial", "partial", "none", "partial", "none"]
     assert out["stats"]["spine_source"] == "sam" and out["stats"]["vision_spines_unmatched"] == 1
     q = review.queue({"scale": None}, bs, [], {}, {}, out["stats"])
@@ -116,3 +118,23 @@ def test_vision_spines_path_unchanged_and_noted(tmp_path, monkeypatch):
     assert out["stats"]["spine_source"] == "vision"
     q = review.queue({"scale": None}, out["books"], [], {}, {}, out["stats"])
     assert any(r["ref_id"] == "books" and r["reason"].startswith("spines from vision model") for r in q)
+
+
+def test_claim_without_ocr_support_is_kept_but_sent_to_review(tmp_path, monkeypatch):
+    """flash-lite read 'Evil Under the Sun' under a price sticker; OCR read nothing there. Not confident."""
+    sd = still_sweep(tmp_path)
+    stub_catalogue(monkeypatch)
+    spines = {"000001.jpg": [sam([100, 100, 400, 200], 0), sam([100, 300, 400, 400], 1)]}
+    reads = {"000001.jpg": {"spines": [gem([100, 100, 400, 200], "Evil Under the Sun", "Agatha Christie"),
+                                       gem([100, 300, 400, 400], "Tripwire")], "items": []}}
+    ocr = [[], [["TRIPWIRE", 0.95, 90]]]
+    monkeypatch.setattr(spine_ocr, "read", lambda crops: [{"words": w, "rotation": 90} for w in ocr])
+    monkeypatch.setattr(vision, "read_crops", lambda js: [{"title": "", "author": "", "publisher": "",
+                                                           "legibility": "none"} for _ in js])
+    bs = books.run(sd, reads, NoGeo(), spines)["books"]
+    assert [b["title"] for b in bs] == ["Evil Under the Sun", "Tripwire"]
+    assert [b["ocr_support"] for b in bs] == [False, True]
+    assert bs[0]["id_confidence"] == settings.CONF_MIN and bs[1]["id_confidence"] == 0.95
+    q = review.queue({"scale": None}, bs, [], {}, {}, {})
+    assert {"ref_id": bs[0]["id"], "reason": "title from vision model only, no OCR support"} in q
+    assert not any(r["ref_id"] == bs[1]["id"] and "OCR" in r["reason"] for r in q)

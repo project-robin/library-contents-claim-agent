@@ -90,6 +90,13 @@ def enough(toks):
     return len(toks) >= 2 or sum(map(len, toks)) >= 8
 
 
+def same_work(a, b):
+    """Two catalogue titles for one work: editions add '(Poirot)' or a subtitle, which is no rival candidate.
+    'Curtain' and 'Curtain Call' stay different works."""
+    main = lambda t: books.norm(re.split(r"[:(\[]| - ", t)[0])
+    return books.sim(a, b) >= 0.9 or books.sim(main(a), main(b)) >= 0.9
+
+
 def fragment_lookup(toks, author, cache):
     """Catalogue candidates for an unread spine, from its OCR fragments. Returns (candidate, P, used_tokens)."""
     if not enough(toks):
@@ -102,8 +109,8 @@ def fragment_lookup(toks, author, cache):
         seen, keep = set(), []
         for c in cands:
             n = supports(c["title"], toks)  # title only: subtitles carry series text ('A Jack Reacher Thriller')
-            if c["url"] in seen or n < 2 or n < 0.6 * len(toks):
-                continue  # most fragments must be in the title: 'EVA' + noise never picks a book
+            if c["url"] in seen or n < min(2, len(toks)) or n < 0.5 * len(toks):
+                continue  # half the fragments must be in the title: 'EVA' + noise never picks a book
             seen.add(c["url"])
             keep.append(c)
         keep = keep[:6]
@@ -119,7 +126,7 @@ def fragment_lookup(toks, author, cache):
         return None, 0.0, toks
     ranked = sorted(range(len(keep)), key=lambda i: -probs.get(f"c{i}", 0))
     p1 = probs.get(f"c{ranked[0]}", 0.0)
-    p2 = max((probs.get(f"c{i}", 0.0) for i in ranked[1:] if books.sim(keep[i]["title"], keep[ranked[0]]["title"]) < 0.9),
+    p2 = max((probs.get(f"c{i}", 0.0) for i in ranked[1:] if not same_work(keep[i]["title"], keep[ranked[0]]["title"])),
              default=0.0)
     if p1 - p2 < 0.3:  # series words fit many books ('HERCULE POIRO'): no clear winner, no identification
         return None, 0.0, toks

@@ -105,3 +105,6 @@ def test_skip_and_until(sweep, monkeypatch):
     assert out == {"books": [], "stats": {}} and required == ["books"]  # no pricing: Serper key not needed
     assert ran == [("books", 1), "checker"]  # reads come before --from spines; recon/geometry skipped
     assert (sd / "metrics.json").exists() and not (sd / "claim_packet.json").exists()
+    ran.clear()
+    run.run(sd, start="books", skip=["geometry"], until="books", log=lambda s: None)
+    assert ran == [("books", 1)]  # --until books: the checker does not run

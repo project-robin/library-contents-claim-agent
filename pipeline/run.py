@@ -158,6 +158,8 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
         with metrics.stage("books"):
             dump(sd / "books.json", books.run(sd, reads, geo, spines))
     books_out = load(sd / "books.json")
+    if past("checker"):
+        return stop(books_out)
     if go("checker"):
         with metrics.stage("checker"):
             review.checker(sd, books_out["books"])

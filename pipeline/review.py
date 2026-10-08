@@ -55,7 +55,7 @@ def queue(geometry, books, items, book_prices, item_prices, book_stats):
         if b.get("ocr_veto"):
             add(b["id"], f"spine OCR reads '{' '.join(b.get('veto_tokens', []))}', which does not support "
                          f"'{b['ocr_veto']}': identity cleared")
-        if b.get("id_source") == "crop_reader" and not b.get("ocr_support"):
+        if b.get("ocr_support") is False:  # claim or crop read the spine's own OCR words do not back
             add(b["id"], "title from vision model only, no OCR support")
         if b.get("id_source") == "ocr_fragments":
             add(b["id"], f"identified from partial spine text '{'… '.join(b['fragments'])}…': check the title")

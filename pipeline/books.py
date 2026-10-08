@@ -340,22 +340,28 @@ def author_only(title, author, cands):
 
 # ---------- stage ----------
 
-def crop_reader(t, ocr, cache):
-    """Last resort for a spine OCR could not read distinctively: the vision model reads the crop alone. Returns
-    (cand, conf, ocr_support). The catalogue title must share a word with the crop's OCR words (any score); words
-    that are the candidate's author neither support nor contradict. No title-relevant OCR words at all -> accepted
-    at most at CONF_MIN and sent to review: flash-lite invents titles under price stickers."""
+def ocr_support(cand, ocr, boiler):
+    """Do the crop's own OCR words (any score) back this catalogue title? True: one is in the title. False: words, none
+    in the title. None: no title-relevant words (blank crop, shelf boilerplate or the candidate's author only)."""
+    from pipeline import spine_ocr  # imports this module
+    toks = [x for x in spine_ocr.tokens(" ".join(w[0] for w in ocr["words"]))
+            if x not in boiler and not spine_ocr.supports(" ".join(cand["authors"]), [x])]
+    return bool(spine_ocr.supports(cand["title"], toks)) if toks else None
+
+
+def crop_reader(t, ocr, boiler, cache):
+    """Last resort for a spine still unidentified: the vision model reads the crop alone. Returns
+    (cand, conf, ocr_support). OCR words that contradict the title reject it; no title-relevant OCR words at all ->
+    accepted at most at CONF_MIN and sent to review: flash-lite invents titles under price stickers."""
     if not norm(t["title"]):
         return None, 0.0, False
     cand, conf, _ = resolve(t["title"], t["author"], t["publisher"], 1.0, cache)  # one read agrees with itself
     if not (cand and conf >= settings.CONF_MIN):
         return None, 0.0, False
-    from pipeline import spine_ocr  # imports this module
-    toks = spine_ocr.tokens(" ".join(w[0] for w in ocr["words"]))
-    toks = [x for x in toks if not spine_ocr.supports(" ".join(cand["authors"]), [x])]
-    if not toks:
+    support = ocr_support(cand, ocr, boiler)
+    if support is None:
         return cand, min(conf, settings.CONF_MIN), False
-    return (cand, conf, True) if spine_ocr.supports(cand["title"], toks) else (None, 0.0, False)
+    return (cand, conf, True) if support else (None, 0.0, False)
 
 
 def run(sweep_dir, reads, geo, spines=None):
@@ -439,16 +445,21 @@ def run(sweep_dir, reads, geo, spines=None):
                     and o[3]["id_source"] == "spine_read":
                 witness[i] = (None, 0.0, name_only, {**w, "id_source": "", "dropped_as_neighbour": cand["title"]})
                 break
-    if spines is not None:  # crop reader: still unidentified, no distinctive OCR words, not excluded
+    if spines is not None:  # a claim is the vision model's word: without OCR support it is kept but sent to review
+        for i, (cand, conf, name_only, w) in enumerate(witness):
+            if w["id_source"] == "spine_read":
+                support = bool(ocr_support(cand, clusters[i]["ocr"], boiler))
+                witness[i] = (cand, conf if support else min(conf, settings.CONF_MIN), name_only,
+                              {**w, "ocr_support": support})
+    if spines is not None:  # crop reader: every spine still unidentified and not excluded; its OCR words must agree
         todo = [i for i, (c, (cand, conf, *_)) in enumerate(zip(clusters, witness))
-                if not (cand and conf >= settings.CONF_MIN) and not c.get("excluded")
-                and not spine_ocr.distinct(c["ocr"], boiler, votes[i][1])]
+                if not (cand and conf >= settings.CONF_MIN) and not c.get("excluded")]
         batches = [todo[k:k + 12] for k in range(0, len(todo), 12)]
         with ThreadPoolExecutor(4) as ex:
             for batch, texts in zip(batches, ex.map(lambda b: vision.read_crops([clusters[i]["crop_bytes"] for i in b]),
                                                     batches)):
                 for i, t in zip(batch, texts):
-                    cand, conf, support = crop_reader(t, clusters[i]["ocr"], cache)
+                    cand, conf, support = crop_reader(t, clusters[i]["ocr"], boiler, cache)
                     if cand:
                         witness[i] = (cand, conf, False, {**witness[i][3], "id_source": "crop_reader",
                                                           "crop_read": t["title"], "ocr_support": support})
