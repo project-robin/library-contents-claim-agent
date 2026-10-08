@@ -112,10 +112,10 @@ class Totals(Open):
     books_identified: int
     books_unidentified: int
     shelf_run_m: Num
-    books_replacement_cost: float
-    books_used_value: float
-    items_replacement_cost_low: float
-    items_replacement_cost_high: float
+    books_replacement_cost: Num
+    books_used_value: Num
+    items_replacement_cost_low: Num
+    items_replacement_cost_high: Num
     excluded_from_totals: int
 
 

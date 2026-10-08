@@ -44,7 +44,7 @@ def read_missing(sd, kfs):
 
     with ThreadPoolExecutor(8) as ex:
         list(ex.map(one, todo))
-    return {k["frame"]: load(sd / "reads" / f"{k['frame']}.json") for k in kfs}
+    return {k["frame"]: vision.clean_read(load(sd / "reads" / f"{k['frame']}.json")) for k in kfs}
 
 
 def recon(sd, kfs):
@@ -89,7 +89,7 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print):
         if f_recon:
             f_recon.result()
         reads = f_reads.result() if f_reads else {
-            k["frame"]: load(sd / "reads" / f"{k['frame']}.json") for k in kfs
+            k["frame"]: vision.clean_read(load(sd / "reads" / f"{k['frame']}.json")) for k in kfs
             if (sd / "reads" / f"{k['frame']}.json").exists()}
     log("reads + recon done")
 

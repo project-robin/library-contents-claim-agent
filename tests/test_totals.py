@@ -20,3 +20,9 @@ def test_totals_add_up_from_lines_only():
     assert t["book_count"] == 5 and t["books_identified"] == 4 and t["books_unidentified"] == 1
     assert t["excluded_from_totals"] == 3 + 2  # 3 books without replacement in total, 2 items unpriced
     assert t["books_needs_appraisal"] == 1 and t["items_needs_appraisal"] == 1
+
+
+def test_totals_are_empty_not_zero_when_nothing_was_priced():
+    t = totals([book("identified", 300, None), book("unidentified", title="")], [item("needs_appraisal")], 1.0)
+    assert t["books_replacement_cost"] == 300 and t["books_used_value"] is None
+    assert t["items_replacement_cost_low"] is None and t["items_replacement_cost_high"] is None

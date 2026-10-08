@@ -9,12 +9,11 @@ import re
 from collections import Counter
 
 import cv2
-import httpx
 import numpy as np
 
 from concurrent.futures import ThreadPoolExecutor
 
-from pipeline import drex, settings, vision
+from pipeline import drex, metrics, net, settings, vision
 from pipeline.geometry import box_px
 
 LEG_W = {"full": 2, "partial": 1, "none": 0}
@@ -196,13 +195,15 @@ def search_terms(title, author):
     return t, re.sub(r"\s+", " ", a)
 
 
-def _gbooks(title, author):
-    q = f"intitle:{title}" + (f" inauthor:{author}" if author else "")
+def _gbooks(title, author, free=False):
+    """free=True: plain-text query. intitle:/inauthor: returns nothing for some Indian editions ('An Unsuitable Boy',
+    'Dream With Your Eyes Open' with a misspelt author) that a plain query finds first."""
+    q = f"{title} {author}".strip() if free else f"intitle:{title}" + (f" inauthor:{author}" if author else "")
     params = {"q": q, "maxResults": 5, "printType": "books"}
     key = settings.GOOGLE_BOOKS_API_KEY or settings.GEMINI_API_KEY  # same Google Cloud project once Books API is on
     if key:
         params["key"] = key
-    r = httpx.get("https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
+    r = net.request("GET", "https://www.googleapis.com/books/v1/volumes", params=params, timeout=15)
     out = []
     for it in r.json().get("items", []) if r.status_code == 200 else []:
         v = it["volumeInfo"]
@@ -216,9 +217,9 @@ def _gbooks(title, author):
 def _openlibrary(title, author):
     fields = "title,subtitle,author_name,publisher,first_publish_year,isbn,key"
     params = {"title": title, "limit": 5, "fields": fields} | ({"author": author} if author else {})
-    r = httpx.get("https://openlibrary.org/search.json", params=params, timeout=20)
+    r = net.request("GET", "https://openlibrary.org/search.json", params=params, timeout=20)
     if r.status_code == 200 and not r.json().get("docs"):  # fall back to free text
-        r = httpx.get("https://openlibrary.org/search.json", timeout=20,
+        r = net.request("GET", "https://openlibrary.org/search.json", timeout=20,
                       params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
     out = []
     for d in r.json().get("docs", []) if r.status_code == 200 else []:
@@ -244,10 +245,15 @@ def resolve(title, author, publisher, agreement, cache):
     key = f"{norm(title)}|{norm(author)}|{norm(publisher)}|{agreement:.2f}"
     if key not in cache:
         st, sa = search_terms(title, author)
+        good = lambda cs: max((score(title, author, agreement, c) for c in cs), default=0) >= 0.8
         cands = _gbooks(st, sa)
-        if max((score(title, author, agreement, c) for c in cands), default=0) < 0.8:
+        if not good(cands):
+            cands += _gbooks(st, sa, free=True)
+        if not good(cands):
             cands += _openlibrary(st, sa)
-        cands = cands[:8]
+        seen = set()
+        cands = [c for c in cands if not (c["url"] in seen or seen.add(c["url"]))]
+        cands = sorted(cands, key=lambda c: -score(title, author, agreement, c))[:8]
         probs = {}
         if cands:
             state = {"spine_text_read": {"title": title, "author": author, "publisher": publisher},
@@ -258,9 +264,19 @@ def resolve(title, author, publisher, agreement, cache):
         cache[key] = {"cands": cands, "probs": probs}
     cands, probs = cache[key]["cands"], cache[key]["probs"]
     if not cands:
-        return None, 0.0
+        return None, 0.0, False
+    if author_only(title, author, cands):
+        return None, 0.0, True
     i = max(range(len(cands)), key=lambda i: probs.get(f"c{i}", 0))
-    return cands[i], round(probs.get(f"c{i}", 0.0), 3)
+    return cands[i], round(probs.get(f"c{i}", 0.0), 3), False
+
+
+def author_only(title, author, cands):
+    """Stacked books often show only the author's name. Read as a title it matches odd catalogue works literally named
+    'Sidney Sheldon' or essays about the author (DREX P=0.99, checker 'match'): 18 of 123 IDs on a replayed shelf.
+    A name with no title is not an identification."""
+    t = norm(title)  # full name ("Sidney Sheldon") or surname alone ("SHELDON")
+    return not norm(author) and any(t in (norm(a), norm(a).split(" ")[-1]) for c in cands for a in c["authors"] if norm(a))
 
 
 # ---------- stage ----------
@@ -284,10 +300,25 @@ def run(sweep_dir, reads, geo):
         c["texts"] = [(m["title"], m["author"], m["publisher"], LEG_W[m["legibility"]]) for m in c["members"]]
         if any(norm(t[0]) for t in c["texts"]) and (len(c["members"]) == 1 or vote(c["texts"])[3] < 1):
             rereads.append(c)
-    for i in range(0, len(rereads), 12):
-        batch = rereads[i:i + 12]
-        for c, t in zip(batch, vision.read_crops([c["crop_bytes"] for c in batch])):
-            c["texts"].append((t["title"], t["author"], t["publisher"], LEG_W[t["legibility"]]))
+    batches = [rereads[i:i + 12] for i in range(0, len(rereads), 12)]
+    with ThreadPoolExecutor(4) as ex:  # one batch at a time took minutes on a 150-book shelf
+        for batch, texts in zip(batches, ex.map(lambda b: vision.read_crops([c["crop_bytes"] for c in b]), batches)):
+            for c, t in zip(batch, texts):
+                c["texts"].append((t["title"], t["author"], t["publisher"], LEG_W[t["legibility"]]))
+
+    from pipeline import spine_ocr  # imports this module
+    ocr_p = sweep_dir / "ocr.json"  # keyed by best detection, so reruns from this stage do not re-OCR
+    ocr_cache = json.loads(ocr_p.read_text()) if ocr_p.exists() else {}
+    todo = [c for c in clusters if c["best"]["id"] not in ocr_cache]
+    with metrics.stage("ocr"):
+        for c, o in zip(todo, spine_ocr.read([c["crop_bytes"] for c in todo])):
+            if o["rotation"] is not None or not settings.OCR_ENABLED:
+                ocr_cache[c["best"]["id"]] = o
+            c["ocr"] = o
+    ocr_p.write_text(json.dumps(ocr_cache))
+    for c in clusters:
+        c["ocr"] = ocr_cache.get(c["best"]["id"], c.get("ocr", {"words": [], "rotation": None}))
+    boiler = spine_ocr.boilerplate([c["ocr"] for c in clusters])
 
     for note in load_notes(sweep_dir):
         if note.get("target", "book") != "book" or note["kind"] not in ("note", "exclude"):
@@ -307,9 +338,27 @@ def run(sweep_dir, reads, geo):
     cache = json.loads(cache_p.read_text()) if cache_p.exists() else {}
     votes = [vote(c["texts"]) for c in clusters]
     with ThreadPoolExecutor(8) as ex:  # ponytail: shared cache dict, distinct keys per book
-        resolved = list(ex.map(lambda v: resolve(v[0], v[1], v[2], v[3], cache) if v[0] else (None, 0.0), votes))
+        resolved = list(ex.map(lambda v: resolve(v[0], v[1], v[2], v[3], cache) if v[0] else (None, 0.0, False), votes))
+
+    # OCR witness: veto claims the spine's own text contradicts, then try fragments on spines still unread
+    witness = []
+    for c, (title, author, _, _), (cand, conf, name_only) in zip(clusters, votes, resolved):
+        witness.append((*spine_ocr.witness(cand, conf, c["ocr"], boiler, author, cache, bool(c.get("excluded"))),
+                        name_only))
+    witness = [(cand, conf, name_only, w) for cand, conf, w, name_only in witness]
+    # a fragment ID equal to an adjacent spine's title is a crop that drifted onto the neighbour: drop it
+    for i, (cand, conf, name_only, w) in enumerate(witness):
+        if w["id_source"] != "ocr_fragments":
+            continue
+        for j in (i - 1, i + 1):
+            o = witness[j] if 0 <= j < len(witness) else None
+            if o and o[0] and clusters[j]["shelf"] == clusters[i]["shelf"] and sim(o[0]["title"], cand["title"]) >= 0.9 \
+                    and o[3]["id_source"] == "spine_read":
+                witness[i] = (None, 0.0, name_only, {**w, "id_source": "", "dropped_as_neighbour": cand["title"]})
+                break
+    resolved = [x[:3] for x in witness]
     books = []
-    for c, (title, author, publisher, agreement), (cand, conf) in zip(clusters, votes, resolved):
+    for c, (title, author, publisher, agreement), (cand, conf, name_only), (*_, w) in zip(clusters, votes, resolved, witness):
         hs = [m["height_cm"] for m in c["members"] if "height_cm" in m]
         ts = [m["thickness_cm"] for m in c["members"] if "thickness_cm" in m]
         marks = sorted({x for m in c["members"] for x in m["marks"]})
@@ -319,7 +368,8 @@ def run(sweep_dir, reads, geo):
             "id": c["id"], "shelf": c["shelf"], "position": c["position"], "orientation": c["orientation"],
             "frame_ref": f"frames/{c['best']['frame']}#t={c['best']['t']}", "crop": f"crops/{c['id']}.jpg",
             "views": len(c["members"]), "spine_text": {"title": title, "author": author, "publisher": publisher},
-            "read_agreement": round(agreement, 2),
+            "read_agreement": round(agreement, 2), "author_only": name_only,
+            "ocr_text": spine_ocr.ocr_text(c["ocr"]), "ocr_rotation": c["ocr"]["rotation"], **w,
             "title": cand["title"] if cand and conf >= settings.CONF_MIN else "",
             "author": ", ".join(cand["authors"]) if cand and conf >= settings.CONF_MIN else "",
             "edition": f"{cand['publisher']} {cand['year']}".strip() if publisher_ok and conf >= settings.CONF_MIN else "",

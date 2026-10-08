@@ -55,13 +55,15 @@ def totals(books, items, shelf_run_m):
     hi = sum((D(i["replacement_cost"]["high"]) for i in priced_items), Decimal(0))
     in_rep = sum(1 for b in books if b["status"] == "identified" and b["replacement_cost"]["amount"] is not None)
     identified = sum(1 for b in books if b["title"])
+    n_used = sum(1 for b in books if b["status"] == "identified" and b["used_value"]["amount"] is not None)
+    money = lambda x, n: float(x.quantize(Decimal("0.01"))) if n else None  # no priced line: unknown, not zero
     return {
         "book_count": len(books), "books_identified": identified, "books_unidentified": len(books) - identified,
         "shelf_run_m": shelf_run_m,
-        "books_replacement_cost": float(rep.quantize(Decimal("0.01"))),
-        "books_used_value": float(used.quantize(Decimal("0.01"))),
-        "items_replacement_cost_low": float(lo.quantize(Decimal("0.01"))),
-        "items_replacement_cost_high": float(hi.quantize(Decimal("0.01"))),
+        "books_replacement_cost": money(rep, in_rep),
+        "books_used_value": money(used, n_used),
+        "items_replacement_cost_low": money(lo, len(priced_items)),
+        "items_replacement_cost_high": money(hi, len(priced_items)),
         "excluded_from_totals": (len(books) - in_rep) + (len(items) - len(priced_items)),
         "books_needs_appraisal": sum(1 for b in books if b["status"] == "needs_appraisal"),
         "items_needs_appraisal": sum(1 for i in items if i["status"] == "needs_appraisal"),

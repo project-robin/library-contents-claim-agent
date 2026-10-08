@@ -298,6 +298,12 @@ def run(sweep_dir, reads):
     if height is None:
         out["notes"].append("ceiling not seen: height and wall area left empty")
     area, per = shoelace(poly), perimeter(poly)
+    if lw[1] < settings.MIN_ROOM_SIDE_M:  # one wall seen: the 'room' is a sliver, not a measurement
+        out["notes"].append(f"room extent not captured (narrowest side {lw[1]:.2f} m): dimensions and areas left empty")
+        out.update({"e1": e1.tolist(), "e2": e2.tolist(), "floor_z": floor_z, "shape_method": "not captured",
+                    "length_m": None, "width_m": None, "height_m": round(height, 2) if height else None,
+                    "floor_area_m2": None, "perimeter_m": None, "wall_area_m2": None, "confidence": 0.0})
+        return out
     out.update({
         "e1": e1.tolist(), "e2": e2.tolist(), "floor_z": floor_z,
         "polygon_m": poly.round(3).tolist(), "shape_method": shape_note,

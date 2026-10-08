@@ -1,7 +1,11 @@
 """Gemini vision calls. The model transcribes and classifies what is visible; it never prices or measures."""
+import difflib
+import re
+import threading
 import time
 from typing import Literal
 
+import httpx
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
@@ -9,13 +13,17 @@ from pydantic import BaseModel
 
 from pipeline import metrics, settings
 
-_client = None
+_client, _client_lock = None, threading.Lock()
 
 
 def client():
+    """One shared client. Locked: threads racing here built several, and the losers' __del__ closed the HTTP
+    client mid-request ("Cannot send a request, as the client has been closed")."""
     global _client
-    if _client is None:
-        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    with _client_lock:
+        if _client is None:
+            _client = genai.Client(api_key=settings.GEMINI_API_KEY,
+                                   http_options=types.HttpOptions(timeout=settings.VISION_TIMEOUT_S * 1000))
     return _client
 
 
@@ -23,6 +31,7 @@ class Spine(BaseModel):
     box_2d: list[int]  # [ymin, xmin, ymax, xmax], 0-1000
     orientation: Literal["upright", "flat"]
     legibility: Literal["full", "partial", "none"]
+    visible_text: str  # verbatim, "…" where covered; generated before title so the title is checked against it
     title: str
     author: str
     publisher: str
@@ -49,7 +58,10 @@ FRAME_PROMPT = """You are the vision sensor of an insurance inventory system. Re
 
 SPINES: one entry per book spine visible, including books lying flat or stacked (orientation "flat").
 - box_2d = [ymin, xmin, ymax, xmax] normalised 0-1000, tight around the spine.
-- Transcribe title/author/publisher EXACTLY as printed. Never complete, correct or guess missing words.
+- visible_text: every word you can actually see printed on this spine, in order, exactly as printed. Where text is
+  hidden (price sticker, label, glare, fold, frame edge) write "…" and do not fill it in.
+- Transcribe title/author/publisher EXACTLY as printed, using only words that appear in visible_text. Never complete,
+  correct or guess missing words: a title half-covered by a sticker is NOT another book by the same author.
   If a field is not readable leave it "". legibility: full = title fully readable, partial = some words, none = nothing.
 - marks: only visible physical evidence (e.g. "signed", "leather", "gilt", "first edition", "limited", "old binding").
 ITEMS: every non-book object (shelving units, furniture, lamps, framed art/portraits, rugs, electronics, appliances such as
@@ -57,11 +69,18 @@ coffee machines, decor, plants). box_2d as above. brand_model only if a logo or 
 issue: the main capture problem for reading spines in this frame, or "none"."""
 
 
+_primary_down_until = 0.0  # circuit breaker for VISION_MODEL, shared by every thread in the process
+
+
 def _generate(model, parts, schema, prompt, thinking=None):
-    """Retries 429/5xx with backoff; after one 'high demand' failure switches to the fallback model."""
-    for attempt in range(5):
-        # the checker never falls back: its value is being a different model
-        m = settings.VISION_FALLBACK_MODEL if attempt >= 1 and model == settings.VISION_MODEL else model
+    """Retries 429/5xx with backoff. VISION_MODEL falls back to VISION_FALLBACK_MODEL after one failure, and a
+    timeout, overload or spent daily quota trips a breaker so later calls skip straight to the fallback: on a replay
+    every read paid the 120 s timeout first (10 min to packet), then 3.8 Flash's 20/day free quota killed the packet.
+    The checker never falls back: its value is being a different model."""
+    global _primary_down_until
+    for attempt in range(10):
+        primary = model == settings.VISION_MODEL and attempt == 0 and time.time() >= _primary_down_until
+        m = settings.VISION_FALLBACK_MODEL if model == settings.VISION_MODEL and not primary else model
         # fallback runs at its default thinking: 'low' made flash-lite over-detect (27 boxes for 22 spines)
         cfg = types.GenerateContentConfig(
             response_mime_type="application/json", response_schema=schema, temperature=0,
@@ -72,10 +91,20 @@ def _generate(model, parts, schema, prompt, thinking=None):
             if attempt:
                 metrics.count("vision_retries", attempt)
             return resp.parsed
-        except genai_errors.APIError as e:
-            if e.code not in (429, 500, 502, 503, 504) or attempt == 4:
+        except (genai_errors.APIError, httpx.TimeoutException) as e:  # a timeout surfaces as a 504 or as httpx's
+            code = getattr(e, "code", 504)
+            if code not in (429, 500, 502, 503, 504) or attempt == 9:
                 raise
-            time.sleep(2 * (attempt + 1))
+            # per-minute quotas (free tier: 15 RPM) say how long to wait; a per-day quota says hours
+            wait = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+)s", str(e))
+            daily = bool(wait) and int(wait[1]) > 120
+            if m == settings.VISION_MODEL and model == settings.VISION_MODEL:
+                _primary_down_until = time.time() + (int(wait[1]) if daily else settings.VISION_BREAKER_S)
+                metrics.count("vision_fallbacks")
+                continue  # straight to the fallback model, no sleep
+            if daily:
+                raise
+            time.sleep(int(wait[1]) + 1 if wait else 2 * (attempt + 1))
 
 
 def _img(jpeg):
@@ -84,11 +113,55 @@ def _img(jpeg):
 
 def read_frame(jpeg: bytes) -> dict:
     out = _generate(settings.VISION_MODEL, [_img(jpeg)], FrameRead, FRAME_PROMPT, settings.VISION_THINKING)
-    return out.model_dump() if out else {"spines": [], "items": [], "issue": "none"}
+    return clean_read(out.model_dump()) if out else {"spines": [], "items": [], "issue": "none"}
+
+
+def _box_ok(b):
+    return len(b) == 4 and all(0 <= v <= 1000 for v in b) and b[0] < b[2] and b[1] < b[3]
+
+
+_STOP = {"the", "a", "an", "of", "and", "to", "in", "on", "for", "by", "with", "at", "from", "is", "my"}
+
+
+def _words(s):
+    return re.findall(r"[a-z0-9]+", s.lower().replace("'", "").replace("\u2019", ""))
+
+
+def title_supported(title, visible):
+    """Every content word of the title must be printed on the spine. With a price sticker over the title the reader
+    returned other real books by the same author ('TO… ROW' -> 'Die Trying', 'EVA…' -> 'Evil Under the Sun'), all
+    'full' legibility and matched by the catalogue at P>0.98. Those are invisible to every later check."""
+    seen = set(_words(visible))
+    for w in _words(title):
+        if w in _STOP or w in seen:
+            continue
+        if len(w) >= 4 and any(difflib.SequenceMatcher(None, w, v).ratio() >= 0.8 for v in seen):
+            continue  # OCR-level spelling differences
+        return False
+    return True
+
+
+def _check_title(s):
+    """Blank a title the spine does not show; keep it under title_unsupported for the audit."""
+    if "visible_text" not in s or not s["title"] or title_supported(s["title"], s["visible_text"]):
+        return s  # reads saved before visible_text existed are left as they were
+    return {**s, "title_unsupported": s["title"], "title": "",
+            "legibility": "partial" if s["legibility"] == "full" else s["legibility"]}
+
+
+def clean_read(r: dict) -> dict:
+    """Drop detections whose box is not [ymin, xmin, ymax, xmax] in 0-1000 (the schema cannot pin a list length, and
+    one 5-value box once crashed the whole packet), and blank titles the spine text does not support."""
+    out = {**r, "spines": [_check_title(s) for s in r["spines"] if _box_ok(s["box_2d"])],
+           "items": [i for i in r["items"] if _box_ok(i["box_2d"])]}
+    out["dropped_bad_boxes"] = r.get("dropped_bad_boxes", 0) + len(r["spines"]) + len(r["items"]) \
+        - len(out["spines"]) - len(out["items"])
+    return out
 
 
 class CropText(BaseModel):
     index: int
+    visible_text: str
     title: str
     author: str
     publisher: str
@@ -104,10 +177,12 @@ def read_crops(jpegs: list[bytes]) -> list[dict]:
     parts = []
     for i, j in enumerate(jpegs):
         parts += [f"Crop {i}:", _img(j)]
-    prompt = ("Each crop is one book spine (it may be rotated). For each crop index, transcribe title, author and "
-              "publisher exactly as printed. Do not guess or complete missing words; leave unreadable fields empty.")
+    prompt = ("Each crop is one book spine (it may be rotated). For each crop index: visible_text = every word actually "
+              "printed and visible, in order, with \"…\" where text is covered or cut off; then title, author and "
+              "publisher exactly as printed, using only words in visible_text. Do not guess or complete missing words "
+              "(a covered title is not another book by the same author); leave unreadable fields empty.")
     out = _generate(settings.VISION_MODEL, parts, CropBatch, prompt, settings.VISION_THINKING)
-    by_i = {c.index: c.model_dump() for c in (out.crops if out else [])}
+    by_i = {c.index: _check_title(c.model_dump()) for c in (out.crops if out else [])}
     return [by_i.get(i, {"title": "", "author": "", "publisher": "", "legibility": "none"}) for i in range(len(jpegs))]
 
 

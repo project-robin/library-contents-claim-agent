@@ -5,7 +5,7 @@ import json
 import cv2
 import numpy as np
 
-from pipeline import books, drex, run, settings, vision
+from pipeline import books, drex, run, settings, spine_ocr, vision
 from pipeline.geometry import ARUCO
 
 L, W, H, K_SCALE = 4.0, 3.0, 2.6, 0.37  # K_SCALE: reconstruction units are not metres
@@ -95,10 +95,11 @@ def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(vision, "read_crops", lambda js: [{"title": "", "author": "", "publisher": "",
                                                            "legibility": "none"} for _ in js])
     monkeypatch.setattr(vision, "check_identity", lambda c, t, a: {"verdict": "match", "reason": "stub"})
-    monkeypatch.setattr(books, "_gbooks", lambda t, a: [{"title": t, "subtitle": "", "authors": [a], "publisher": "",
+    monkeypatch.setattr(books, "_gbooks", lambda t, a, free=False: [{"title": t, "subtitle": "", "authors": [a], "publisher": "",
                                                          "year": "2001", "isbn": "", "url": "u", "source": "stub"}])
     monkeypatch.setattr(books, "_openlibrary", lambda t, a: [])
     monkeypatch.setattr(drex, "ask", lambda state, qs: {k: 0.95 for k in qs})
+    monkeypatch.setattr(spine_ocr, "read", lambda crops: [{"words": [], "rotation": None} for _ in crops])
     monkeypatch.setattr(settings, "require", lambda what: None)
     monkeypatch.setattr(settings, "SERPER_API_KEY", "")  # no network: pricing finds nothing and must invent nothing
     p = run.run(sd, start="geometry", log=lambda s: None)
@@ -116,7 +117,7 @@ def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
     ts = [b["spine_thickness_cm"] for b in p["books"]]
     assert abs(np.median(hs) - 22) < 2 and abs(np.median(ts) - 3) < 0.5, (hs[:5], ts[:5])
     assert all(b["replacement_cost"]["amount"] is None for b in p["books"])  # no keys -> no prices, never invented
-    assert t["books_replacement_cost"] == 0 and t["excluded_from_totals"] >= N_BOOKS
+    assert t["books_replacement_cost"] is None and t["excluded_from_totals"] >= N_BOOKS
     assert len(p["items"]) == 1 and p["items"][0]["category"] == "lighting"
     assert any("unidentified" in q["reason"] or "not readable" in q["reason"] for q in p["review_queue"])
     for b in p["books"]:

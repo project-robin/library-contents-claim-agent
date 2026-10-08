@@ -78,3 +78,12 @@ def test_dedup_merges_views_keeps_neighbours():
             det(0.060, ""), det(0.12, "Dune")]
     cs = cluster(dets)
     assert sorted(len(c["members"]) for c in cs) == [1, 2, 3]  # Dune x3 (same title re-sighted 12 cm off), Emma x2, blank
+
+
+def test_used_and_import_sellers_are_not_new_prices():
+    from pipeline.pricing import used_listing
+    assert used_listing("Biblio.com - Orphans Treasure Box", "Cross Country - Hardcover")
+    assert used_listing("Bookchor", "Cross Country By James Patterson")
+    assert used_listing("Some Shop", "Cross Country (Used - Good)")
+    assert not used_listing("amazon.in", "Cross Country")
+    assert not used_listing("Crossword Bookstores", "The Usual Suspects")  # 'used' only as a whole word

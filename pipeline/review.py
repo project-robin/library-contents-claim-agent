@@ -50,9 +50,16 @@ def queue(geometry, books, items, book_prices, item_prices, book_stats):
             add(b["id"], f"checker rejected '{b['checker_cleared']['title']}': {b['checker']['reason']}")
         elif b.get("checker", {}).get("verdict") == "unsure":
             add(b["id"], f"checker unsure: {b['checker']['reason']}")
+        if b.get("ocr_veto"):
+            add(b["id"], f"spine OCR reads '{' '.join(b.get('veto_tokens', []))}', which does not support "
+                         f"'{b['ocr_veto']}': identity cleared")
+        if b.get("id_source") == "ocr_fragments":
+            add(b["id"], f"identified from partial spine text '{'… '.join(b['fragments'])}…': check the title")
         if not b["title"] and not b.get("checker_cleared"):
             add(b["id"], "spine not readable: logged as unidentified with dimensions only"
                 if not b["spine_text"]["title"] else
+                f"only the author's name is legible ('{b['spine_text']['title']}'): title unknown, not guessed"
+                if b.get("author_only") else
                 f"spine text '{b['spine_text']['title']}' did not match a catalogue record confidently")
         elif b["title"] and b["id_confidence"] < settings.CONF_IDENTIFIED:
             add(b["id"], f"low identification confidence {b['id_confidence']}")

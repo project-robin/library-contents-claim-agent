@@ -62,6 +62,7 @@ class Session:
         self.read_sem, self.read_tasks = asyncio.Semaphore(settings.LIVE_READ_CONCURRENCY), set()
         self.books, self.items, self.unreadable_now = {}, [], 0
         self.last_item_t = {}
+        self.user_spoke = False  # set_locale needs a user answer: on a silent replay the agent set IN by itself
 
     # ---------- plumbing ----------
     def now(self):
@@ -180,6 +181,7 @@ class Session:
                             if sc.interrupted:
                                 await self.send_json({"type": "interrupted"})
                             if sc.input_transcription and sc.input_transcription.text:
+                                self.user_spoke = True
                                 await self.send_json({"type": "transcript", "role": "user", "text": sc.input_transcription.text})
                             if sc.output_transcription and sc.output_transcription.text:
                                 await self.send_json({"type": "transcript", "role": "agent", "text": sc.output_transcription.text})
@@ -261,7 +263,9 @@ class Session:
         res = {"ok": True}
         if name == "set_locale":
             cc = str(a.get("country_code", "")).upper()
-            if cc in settings.LOCALES:
+            if not self.user_spoke:
+                res = {"ok": False, "error": "the user has not confirmed a country yet: ask them and wait for the answer"}
+            elif cc in settings.LOCALES:
                 self.sweep_update(country=cc, currency=settings.LOCALES[cc]["currency"])
                 res["currency"] = settings.LOCALES[cc]["currency"]
             else:
@@ -305,12 +309,15 @@ class Session:
                                "rerun from the saved evidence.", force=True)
             return
         t, cur = p["totals"], p["sweep"]["currency"]
+        amt = lambda x: f"{cur} {x:,.0f}" if x is not None else "not available"
+        floor = p["room"]["floor_area_m2"]
         summary = (f"{t['book_count']} books counted, {t['books_identified']} identified, "
                    f"{t['books_unidentified']} unidentified, {t['books_needs_appraisal']} need appraisal. "
-                   f"Books replacement {cur} {t['books_replacement_cost']:,.0f}, used value {cur} "
-                   f"{t['books_used_value']:,.0f}. {len(p['items'])} other items, replacement {cur} "
-                   f"{t['items_replacement_cost_low']:,.0f} to {t['items_replacement_cost_high']:,.0f}. "
-                   f"Room floor {p['room']['floor_area_m2']} square metres. {len(p['review_queue'])} lines need review.")
+                   f"Books replacement {amt(t['books_replacement_cost'])}, used value "
+                   f"{amt(t['books_used_value'])}. {len(p['items'])} other items, replacement "
+                   f"{amt(t['items_replacement_cost_low'])} to {amt(t['items_replacement_cost_high'])}. "
+                   + (f"Room floor {floor} square metres. " if floor else "Room size was not captured. ")
+                   + f"{len(p['review_queue'])} lines need review.")
         await self.send_json({"type": "packet", "report": f"/sweeps/{self.id}/report.html",
                               "json": f"/sweeps/{self.id}/claim_packet.json", "summary": summary})
         await self.monitor(f"[PACKET READY] {summary}", force=True)
