@@ -32,6 +32,9 @@ Print the marker PDF at **100% / actual size**. Measure the black square with a 
 
 ## Run a sweep
 
+Check quotas first (free tiers run out per day): `uv run python -m eval.preflight`. A test without a
+60-book room: [docs/HOME_TEST.md](docs/HOME_TEST.md).
+
 ```bash
 uv run uvicorn app.server:app --host 0.0.0.0 --port 8000
 # phone cameras need HTTPS -> in a second terminal, a no-account tunnel:
@@ -55,7 +58,7 @@ uv run pytest                                             # offline tests incl. 
 
 | Purpose | Tool |
 |---|---|
-| Live voice + camera agent | Gemini Live (`gemini-3.1-flash-live-preview`) via `google-genai` |
+| Live voice + camera agent | Gemini Live (`LIVE_MODEL`, default `gemini-3.8-live`) via `google-genai` |
 | Spine boxes (one per spine) | SAM 3.1 (Meta API, image mode, prompt `book spine`) |
 | Words printed on each spine | PP-OCRv5 server (PaddleOCR 3.7.0, Apache-2.0) on a Modal CPU container |
 | Item detection, spine text claims, unreadable crops | Gemini Flash, JSON schema output |
