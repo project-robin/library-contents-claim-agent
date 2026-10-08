@@ -78,7 +78,41 @@ def test_primary_model_failure_trips_breaker_to_fallback(monkeypatch):
         return SimpleNamespace(parsed="ok", usage_metadata=usage)
 
     monkeypatch.setattr(vision, "_primary_down_until", 0.0)
-    monkeypatch.setattr(vision, "client", lambda: SimpleNamespace(models=SimpleNamespace(generate_content=generate_content)))
+    monkeypatch.setattr(vision, "client", lambda key=None: SimpleNamespace(models=SimpleNamespace(generate_content=generate_content)))
     assert vision._generate(settings.VISION_MODEL, [], None, "p") == "ok"
     assert vision._generate(settings.VISION_MODEL, [], None, "p") == "ok"
     assert calls == [settings.VISION_MODEL, settings.VISION_FALLBACK_MODEL, settings.VISION_FALLBACK_MODEL]
+
+
+def test_spent_daily_quota_moves_to_the_next_accounts_key(monkeypatch):
+    """Burner keys from several accounts: a key whose daily quota is gone hands over to the next, no sleep, no fallback
+    model; once every key is spent, the call fails as before."""
+    from google.genai import errors as genai_errors
+    from types import SimpleNamespace
+    from pipeline import settings, vision
+    calls = []
+    daily = genai_errors.APIError(429, {"error": {"code": 429, "message": "quota", "status": "RESOURCE_EXHAUSTED",
+                                                  "details": [{"retryDelay": "20000s"}]}})
+
+    def client(key=None):
+        def generate_content(model, contents, config):
+            calls.append((key, model))
+            if key != "k3":
+                raise daily
+            usage = SimpleNamespace(prompt_token_count=1, candidates_token_count=1, thoughts_token_count=0)
+            return SimpleNamespace(parsed="ok", usage_metadata=usage)
+        return SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "k1")
+    monkeypatch.setattr(settings, "GEMINI_API_KEYS", "k2, k3,k1")
+    monkeypatch.setattr(vision, "_spent", set())
+    monkeypatch.setattr(vision, "client", client)
+    m = settings.CHECKER_MODEL
+    assert settings.gemini_keys() == ["k1", "k2", "k3"]
+    assert vision._generate(m, [], None, "p") == "ok"
+    assert calls == [("k1", m), ("k2", m), ("k3", m)]
+    assert vision._generate(m, [], None, "p") == "ok" and calls[-1] == ("k3", m)  # spent keys are not retried
+    vision._spent.add(("k3", m))
+    import pytest
+    with pytest.raises(genai_errors.APIError):
+        vision._generate(m, [], None, "p")

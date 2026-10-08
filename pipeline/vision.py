@@ -13,18 +13,25 @@ from pydantic import BaseModel
 
 from pipeline import metrics, settings
 
-_client, _client_lock = None, threading.Lock()
+_clients, _client_lock = {}, threading.Lock()
+_spent = set()  # (key, model) whose daily quota is gone: calls to that model move on to the next key
 
 
-def client():
-    """One shared client. Locked: threads racing here built several, and the losers' __del__ closed the HTTP
+def key_for(model):
+    """The first key (settings.gemini_keys order) whose daily quota for this model is not known to be spent."""
+    keys = settings.gemini_keys()
+    return next((k for k in keys if (k, model) not in _spent), keys[0] if keys else "")
+
+
+def client(key=None):
+    """One shared client per key. Locked: threads racing here built several, and the losers' __del__ closed the HTTP
     client mid-request ("Cannot send a request, as the client has been closed")."""
-    global _client
+    key = key or key_for(None)
     with _client_lock:
-        if _client is None:
-            _client = genai.Client(api_key=settings.GEMINI_API_KEY,
-                                   http_options=types.HttpOptions(timeout=settings.VISION_TIMEOUT_S * 1000))
-    return _client
+        if key not in _clients:
+            _clients[key] = genai.Client(api_key=key,
+                                         http_options=types.HttpOptions(timeout=settings.VISION_TIMEOUT_S * 1000))
+    return _clients[key]
 
 
 class Spine(BaseModel):
@@ -78,15 +85,17 @@ def _generate(model, parts, schema, prompt, thinking=None):
     every read paid the 120 s timeout first (10 min to packet), then 3.8 Flash's 20/day free quota killed the packet.
     The checker never falls back: its value is being a different model."""
     global _primary_down_until
+    first = True
     for attempt in range(10):
-        primary = model == settings.VISION_MODEL and attempt == 0 and time.time() >= _primary_down_until
+        primary = model == settings.VISION_MODEL and first and time.time() >= _primary_down_until
         m = settings.VISION_FALLBACK_MODEL if model == settings.VISION_MODEL and not primary else model
+        key = key_for(m)
         # fallback runs at its default thinking: 'low' made flash-lite over-detect (27 boxes for 22 spines)
         cfg = types.GenerateContentConfig(
             response_mime_type="application/json", response_schema=schema, temperature=0,
             thinking_config=types.ThinkingConfig(thinking_level=thinking) if thinking and m == model else None)
         try:
-            resp = client().models.generate_content(model=m, contents=[*parts, prompt], config=cfg)
+            resp = client(key).models.generate_content(model=m, contents=[*parts, prompt], config=cfg)
             metrics.add_tokens(m, resp.usage_metadata)
             if attempt:
                 metrics.count("vision_retries", attempt)
@@ -98,6 +107,12 @@ def _generate(model, parts, schema, prompt, thinking=None):
             # per-minute quotas (free tier: 15 RPM) say how long to wait; a per-day quota says hours
             wait = re.search(r"retryDelay'?\"?:\s*'?\"?(\d+)s", str(e))
             daily = bool(wait) and int(wait[1]) > 120
+            if daily:
+                _spent.add((key, m))
+                if key_for(m) != key:  # another account's key still has quota for this model: no sleep, no fallback
+                    metrics.count("gemini_key_rotations")
+                    continue
+            first = False
             if m == settings.VISION_MODEL and model == settings.VISION_MODEL:
                 _primary_down_until = time.time() + (int(wait[1]) if daily else settings.VISION_BREAKER_S)
                 metrics.count("vision_fallbacks")

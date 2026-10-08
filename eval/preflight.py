@@ -12,9 +12,9 @@ import httpx
 from pipeline import net, settings
 
 
-def gemini(model):
+def gemini(model, key):
     from pipeline import vision
-    vision.client().models.generate_content(model=model, contents="Reply with the word ok.")
+    vision.client(key).models.generate_content(model=model, contents="Reply with the word ok.")
 
 
 def gbooks():
@@ -48,25 +48,29 @@ def ocr():
     remote().ping.remote()
 
 
-CHECKS = [(f"Gemini reads ({settings.VISION_MODEL})", lambda: gemini(settings.VISION_MODEL)),
-          (f"Gemini fallback ({settings.VISION_FALLBACK_MODEL})", lambda: gemini(settings.VISION_FALLBACK_MODEL)),
-          (f"Gemini checker ({settings.CHECKER_MODEL})", lambda: gemini(settings.CHECKER_MODEL)),
-          ("Google Books", gbooks), ("Open Library", openlibrary), ("Serper shopping", serper),
+# every key in turn (shown by its last 4 characters): the pipeline moves to the next key when one's daily quota runs out
+CHECKS = [(f"Gemini {label} ({model}) key …{key[-4:]}", lambda model=model, key=key: gemini(model, key))
+          for key in settings.gemini_keys()
+          for label, model in (("reads", settings.VISION_MODEL), ("fallback", settings.VISION_FALLBACK_MODEL),
+                               ("checker", settings.CHECKER_MODEL))]
+CHECKS += [("Google Books", gbooks), ("Open Library", openlibrary), ("Serper shopping", serper),
           ("SAM 3.1 key", sam), ("PP-OCRv5 on Modal (wakes the container)", ocr)]
 
 
 if __name__ == "__main__":
-    bad = 0
+    bad, gemini_ok = 0, set()
     for name, fn in CHECKS:
         t = time.time()
         try:
             fn()
             print(f"  ok    {name}  ({time.time() - t:.1f} s)")
+            gemini_ok.add(name.split(" key ")[0])
         except Exception as e:  # noqa: BLE001 - report every failure, keep checking the rest
-            bad += 1
+            bad += 1 if " key …" not in name else 0  # a spent key is fine while another key has quota
             msg = str(e)
             wait = msg.split("Please retry in ")[1].split(".")[0] if "Please retry in " in msg else ""
             print(f"  FAIL  {name}: {msg.splitlines()[0][:110]}" + (f"  -> retry in {wait}" if wait else ""))
+    bad += len({n.split(" key ")[0] for n, _ in CHECKS if " key …" in n} - gemini_ok)  # no key left for a model
     print("\nAll services answer: start the sweep." if not bad else
           f"\n{bad} service(s) failed. A spent daily quota resets within a day (Gemini's 429 says 'retry in ...'); "
           "a sweep now gets blank titles and 'unsure' checks.")

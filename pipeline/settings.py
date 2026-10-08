@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     GEMINI_API_KEY: str = ""
+    GEMINI_API_KEYS: str = ""  # more keys from other accounts, comma-separated: used in turn as each one's quota runs out
     SERPER_API_KEY: str = ""
     DREX_API_KEY: str = ""
     DREX_BASE_URL: str = "https://drex.nace.ai"
@@ -79,6 +80,14 @@ class Settings(BaseSettings):
 
 # ponytail: module attributes keep call sites as `settings.X`
 globals().update(Settings().model_dump())
+
+
+
+def gemini_keys():
+    """GEMINI_API_KEY, then GEMINI_API_KEYS. Free-tier quotas are per Google Cloud project, so keys from other accounts
+    each bring their own daily allowance."""
+    return list(dict.fromkeys(k.strip() for k in [GEMINI_API_KEY, *GEMINI_API_KEYS.split(",")] if k.strip()))
+
 
 REQUIRED = {"live": ["GEMINI_API_KEY"], "pipeline": ["GEMINI_API_KEY", "SERPER_API_KEY", "DREX_API_KEY"],
             "books": ["GEMINI_API_KEY", "DREX_API_KEY"]}  # a run that stops before pricing (--until)

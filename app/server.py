@@ -174,11 +174,11 @@ class Session:
                     asyncio.create_task(self.finish())
 
     async def live_loop(self):
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
         handle, first = None, True
         while not self.closed:
+            key = vision.key_for(settings.LIVE_MODEL)
             try:
-                async with client.aio.live.connect(model=settings.LIVE_MODEL, config=live.config(handle)) as s:
+                async with genai.Client(api_key=key).aio.live.connect(model=settings.LIVE_MODEL, config=live.config(handle)) as s:
                     self.live = s
                     log.info("live connected (resumed=%s)", handle is not None)
                     if first:
@@ -220,6 +220,9 @@ class Session:
                 log.warning("live session error, reconnecting: %s", e)
                 if "already connected" in str(e):  # after a 1006 drop Google still holds the old session: resuming
                     handle = None                  # its handle fails forever (1008), so start a fresh one
+                if "quota" in str(e).lower() or "exhausted" in str(e).lower():  # next account's key, fresh session
+                    vision._spent.add((key, settings.LIVE_MODEL))
+                    handle = None
                 await asyncio.sleep(1)
             finally:
                 self.live = None
