@@ -184,6 +184,9 @@ class Session:
                     if first:
                         await s.send_realtime_input(text="[MONITOR] The user has opened the app. Greet them and begin.")
                         first = False
+                    elif handle is None:  # fresh session mid-sweep: it has no memory of the conversation
+                        await s.send_realtime_input(text="[MONITOR] Voice reconnected mid-sweep; the locale is already "
+                                                         "set. Say you are back in a few words and keep guiding the sweep.")
                     go_away = False
                     while not self.closed and not go_away:
                         async for m in s.receive():
@@ -215,6 +218,8 @@ class Session:
                 return
             except Exception as e:
                 log.warning("live session error, reconnecting: %s", e)
+                if "already connected" in str(e):  # after a 1006 drop Google still holds the old session: resuming
+                    handle = None                  # its handle fails forever (1008), so start a fresh one
                 await asyncio.sleep(1)
             finally:
                 self.live = None
