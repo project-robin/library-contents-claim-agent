@@ -34,6 +34,10 @@ def count(name, n=1):
         _counters[name] = _counters.get(name, 0) + n
 
 
+def get(name):
+    return _counters.get(name, 0)
+
+
 @contextmanager
 def stage(name):
     t0 = time.perf_counter()

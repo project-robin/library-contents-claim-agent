@@ -41,11 +41,15 @@ def read_missing(sd, kfs):
     todo = [k["frame"] for k in kfs if not (sd / "reads" / f"{k['frame']}.json").exists()]
 
     def one(f):
-        dump(sd / "reads" / f"{f}.json", vision.read_frame((sd / "frames" / f).read_bytes()))
+        try:
+            dump(sd / "reads" / f"{f}.json", vision.read_frame((sd / "frames" / f).read_bytes()))
+        except Exception:  # noqa: BLE001 - spent quota on a live sweep: SAM + OCR still name spines; not cached, a rerun retries
+            metrics.count("read_failures")
 
     with ThreadPoolExecutor(8) as ex:
         list(ex.map(one, todo))
-    return {k["frame"]: vision.clean_read(load(sd / "reads" / f"{k['frame']}.json")) for k in kfs}
+    return {k["frame"]: vision.clean_read(load(sd / "reads" / f"{k['frame']}.json")) for k in kfs
+            if (sd / "reads" / f"{k['frame']}.json").exists()}
 
 
 def load_spines(sd, kfs):
@@ -186,6 +190,9 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
     with metrics.stage("packet"):
         q = review.queue(geo_json, books_out["books"], items_out["items"], prices["books"], prices["items"],
                          books_out["stats"])
+        if n := metrics.get("read_failures") + metrics.get("crop_read_failures"):
+            q.append({"ref_id": "books", "reason": f"{n} vision-model reads failed (quota or outage): spine claims "
+                                                   "and items are missing for those frames and crops"})
         extra = {"keyframes": len(kfs)}
         if sweep.get("t_end_epoch"):
             extra["time_to_packet_s"] = round(time.time() - sweep["t_end_epoch"], 1)

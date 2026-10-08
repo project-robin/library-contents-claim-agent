@@ -108,3 +108,17 @@ def test_skip_and_until(sweep, monkeypatch):
     ran.clear()
     run.run(sd, start="books", skip=["geometry"], until="books", log=lambda s: None)
     assert ran == [("books", 1)]  # --until books: the checker does not run
+
+
+def test_failed_frame_read_is_skipped_not_fatal(tmp_path, monkeypatch):
+    """A live sweep on a spent Gemini quota died re-reading frames; now they are skipped, counted and retried later."""
+    from pipeline import metrics, vision
+    (tmp_path / "frames").mkdir()
+    (tmp_path / "frames" / "000001.jpg").write_bytes(b"x")
+
+    def spent(jpeg):
+        raise RuntimeError("429 RESOURCE_EXHAUSTED")
+    monkeypatch.setattr(vision, "read_frame", spent)
+    metrics.reset()
+    assert run.read_missing(tmp_path, [{"frame": "000001.jpg"}]) == {}
+    assert metrics.get("read_failures") == 1 and not (tmp_path / "reads" / "000001.jpg.json").exists()

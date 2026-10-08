@@ -181,7 +181,11 @@ def read_crops(jpegs: list[bytes]) -> list[dict]:
               "printed and visible, in order, with \"…\" where text is covered or cut off; then title, author and "
               "publisher exactly as printed, using only words in visible_text. Do not guess or complete missing words "
               "(a covered title is not another book by the same author); leave unreadable fields empty.")
-    out = _generate(settings.VISION_MODEL, parts, CropBatch, prompt, settings.VISION_THINKING)
+    try:
+        out = _generate(settings.VISION_MODEL, parts, CropBatch, prompt, settings.VISION_THINKING)
+    except Exception:  # noqa: BLE001 - spent quota: these crops stay unread (review), the packet still builds
+        metrics.count("crop_read_failures")
+        out = None
     by_i = {c.index: _check_title(c.model_dump()) for c in (out.crops if out else [])}
     return [by_i.get(i, {"title": "", "author": "", "publisher": "", "legibility": "none"}) for i in range(len(jpegs))]
 
