@@ -210,6 +210,30 @@ class Verdict(BaseModel):
     reason: str
 
 
+class IndexedVerdict(Verdict):
+    index: int
+
+
+class VerdictBatch(BaseModel):
+    verdicts: list[IndexedVerdict]
+
+
+def check_identities(claims: list[tuple[bytes, str, str]]) -> list[dict]:
+    """check_identity for several spines in one call: free Flash-Lite allows 15 calls a minute, and one call per book
+    spent about 2 minutes of a sweep waiting on that limit. claims: [(crop, title, author)]; one verdict each, in order.
+    Raises on failure, like check_identity."""
+    parts = []
+    for i, (crop, title, author) in enumerate(claims):
+        parts += [f'Crop {i}: an inventory system claims this spine is "{title}" by {author or "unknown author"}.',
+                  _img(crop)]
+    prompt = ("Each crop is one book spine. For each crop index, judge only from that spine's visible text: match = the "
+              "visible text supports the claim; mismatch = it contradicts it; unsure = not enough visible text. Text on "
+              "a neighbouring spine at the crop's edge is not this spine. Give a one-line reason.")
+    out = _generate(settings.CHECKER_MODEL, parts, VerdictBatch, prompt)
+    by_i = {v.index: {"verdict": v.verdict, "reason": v.reason} for v in (out.verdicts if out else [])}
+    return [by_i.get(i, {"verdict": "unsure", "reason": "no verdict returned"}) for i in range(len(claims))]
+
+
 def check_identity(crop: bytes, title: str, author: str) -> dict:
     """Independent audit: does this spine really show the claimed book?"""
     prompt = (f'An inventory system claims this spine is "{title}" by {author or "unknown author"}. '

@@ -3,26 +3,32 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pipeline import metrics, settings, vision
 
+# spines per checker call (free tier: 15 calls/min). On the 62 photo identifications, one per call took 288 s and caught
+# 3 of 5 hallucinations (+1 unsure); batches of 8 took 37-98 s and caught 2 and 5 of 5 on two runs: within run noise
+CHECK_BATCH = 8
+
 
 def checker(sweep_dir, books):
     """A different model sees only the crop and the claim. Mismatch -> identity cleared (blank beats wrong).
     A failed check (spent daily quota, outage) is 'unsure', so the book goes to review: on a replay the checker's
     500/day free quota ran out mid-sweep and killed a packet whose books were already built."""
     todo = [b for b in books if b["title"] and not b["excluded"]]
+    batches = [todo[i:i + CHECK_BATCH] for i in range(0, len(todo), CHECK_BATCH)]
 
-    def one(b):
+    def batch(bs):
         try:
-            return b, vision.check_identity((sweep_dir / b["crop"]).read_bytes(), b["title"], b["author"])
+            return vision.check_identities([((sweep_dir / b["crop"]).read_bytes(), b["title"], b["author"]) for b in bs])
         except Exception as e:  # noqa: BLE001 - any failure of the audit is 'not audited', never a dead packet
-            metrics.count("checker_failures")
-            return b, {"verdict": "unsure", "reason": f"checker unavailable ({type(e).__name__})"}
+            metrics.count("checker_failures", len(bs))
+            return [{"verdict": "unsure", "reason": f"checker unavailable ({type(e).__name__})"}] * len(bs)
 
-    with ThreadPoolExecutor(8) as ex:
-        for b, v in ex.map(one, todo):
-            b["checker"] = v
-            if v["verdict"] == "mismatch":
-                b["checker_cleared"] = {"title": b["title"], "author": b["author"]}
-                b.update(title="", author="", edition="", isbn="", catalog=None)
+    with ThreadPoolExecutor(4) as ex:
+        for bs, vs in zip(batches, ex.map(batch, batches)):
+            for b, v in zip(bs, vs):
+                b["checker"] = dict(v)
+                if v["verdict"] == "mismatch":
+                    b["checker_cleared"] = {"title": b["title"], "author": b["author"]}
+                    b.update(title="", author="", edition="", isbn="", catalog=None)
     return books
 
 

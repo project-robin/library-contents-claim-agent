@@ -92,7 +92,7 @@ def make_sweep(sd):
 def stub_apis(monkeypatch):
     monkeypatch.setattr(vision, "read_crops", lambda js: [{"title": "", "author": "", "publisher": "",
                                                            "legibility": "none"} for _ in js])
-    monkeypatch.setattr(vision, "check_identity", lambda c, t, a: {"verdict": "match", "reason": "stub"})
+    monkeypatch.setattr(vision, "check_identities", lambda cs: [{"verdict": "match", "reason": "stub"} for _ in cs])
     monkeypatch.setattr(books, "_gbooks", lambda t, a, free=False: [{"title": t, "subtitle": "", "authors": [a], "publisher": "",
                                                          "year": "2001", "isbn": "", "url": "u", "source": "stub"}])
     monkeypatch.setattr(books, "_openlibrary", lambda t, a: [])

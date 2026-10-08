@@ -191,11 +191,12 @@ def test_checker_failure_is_unsure_not_a_dead_packet(tmp_path, monkeypatch):
     bs = [{"id": f"b_{i}", "title": t, "author": "", "excluded": False, "crop": "a.jpg"}
           for i, t in enumerate(["Killing Floor", "Die Trying"])]
 
-    def check(crop, title, author):
-        if title == "Die Trying":
+    def check(claims):
+        if any(t == "Die Trying" for _, t, _ in claims):
             raise RuntimeError("429 RESOURCE_EXHAUSTED")
-        return {"verdict": "match", "reason": "ok"}
-    monkeypatch.setattr(vision, "check_identity", check)
+        return [{"verdict": "match", "reason": "ok"} for _ in claims]
+    monkeypatch.setattr(vision, "check_identities", check)
+    monkeypatch.setattr(review, "CHECK_BATCH", 1)
     review.checker(tmp_path, bs)
     assert bs[0]["checker"]["verdict"] == "match"
     assert bs[1]["checker"] == {"verdict": "unsure", "reason": "checker unavailable (RuntimeError)"}

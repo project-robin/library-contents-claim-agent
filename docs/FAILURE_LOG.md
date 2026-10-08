@@ -108,6 +108,18 @@ Offline rerun of the books stage (no Gemini quota left that day, so no crop read
 | 203017 | 59 → 31 | 13 → 17 | 2 → 1 |
 | Photo A / B (truth 44 / 40) | 46 / 40 → 46 / 40 | 27/37, 18/20 → 28/37, 19/20 | 0 → 0 |
 
+Speed (time to packet was 589 s on sweep 203017; target 300 s):
+
+| Stage | Before | After | Change |
+|---|---|---|---|
+| Waiting for live frame reads | ≈ 140 s | expected ≈ 0, not yet measured live | one Gemini read per 3 s of keyframes (`READ_GAP_S`), not ~50 a minute against Flash-Lite's 15 a minute; titles on 203017: 17/21 with every 3rd read vs 15/21 with all |
+| checker | 114 s | 30-33 s | 8 spines per call (`review.CHECK_BATCH`); on 62 photo IDs, hallucinations caught one per call 3/5, batched 2/5 and 5/5 on two runs |
+| pricing (empty cache) | 108-134 s | 50-89 s | a book's 3 Serper queries in parallel, items alongside books, a 12 s cutoff and retry on Serper's 15-45 s tails, at most 8 requests in flight (48 drew 111 HTTP 429s) |
+
+A full rerun from SAM onward, with cold GPU and OCR containers (a live sweep warms them while filming), took 345 s:
+recon 98, OCR 65, books 133 (including OCR), checker 30, pricing 69 (with the 429s, before the cap). These test runs
+spent the Serper key's credits, so the capped pricing is measured once (80 s, no 429s, 13 timeouts).
+
 Count is still +48 to +105% on the live sweeps: unread boxes and wrong claims on the overlapping stack. The fix that
 remains is a per-spine outline (a decoded SAM mask, or a rotated box) for the crop and the 3D point.
 

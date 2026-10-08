@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     MAX_RECON_FRAMES: int = Field(150, ge=8)
     MIN_ROOM_SIDE_M: float = 1.2  # narrower than this means the walls were not captured, not a real room
     LIVE_READ_CONCURRENCY: int = Field(8, ge=1)
+    # one Gemini read per this many seconds of keyframes: a sweep makes ~50 keyframes a minute and free Flash-Lite
+    # allows 15 calls a minute, so reading all of them queued ~2 min of reads behind the packet. SAM boxes and OCR
+    # cover every keyframe; a book shows in 5-25 of them. Reading every 3rd: 17/21 titles vs 15/21 reading all
+    READ_GAP_S: float = Field(3.0, ge=0)
 
     # Decisions (DREX calibrated probabilities)
     CONF_IDENTIFIED: float = Field(0.75, ge=0, le=1)

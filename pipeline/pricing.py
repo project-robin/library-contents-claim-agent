@@ -4,6 +4,7 @@ import base64
 import json
 import re
 import statistics
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -69,6 +70,12 @@ def lower_median(offers):
     return s[(len(s) - 1) // 2]
 
 
+# median 2-3 s, but 1 in 20 runs 15-45 s; a retry after a 12 s cutoff is usually quick (net.request retries)
+SERPER_TIMEOUT_S = 12
+SERPER_PARALLEL = 8  # requests in flight: 48 at once drew 111 HTTP 429s for 106 answers, and their back-off waits
+_serper_slots = threading.BoundedSemaphore(SERPER_PARALLEL)
+
+
 class Pricer:
     def __init__(self, cache_path):
         self.cache_path = cache_path
@@ -84,9 +91,10 @@ class Pricer:
         if key not in self.cache:
             if not settings.SERPER_API_KEY:
                 return {"retrieved_at": "", "results": []}
-            r = net.request("POST", "https://google.serper.dev/shopping", timeout=45,  # uncached queries take up to ~20 s
-                           headers={"X-API-KEY": settings.SERPER_API_KEY},
-                           json={"q": q, "gl": gl, "hl": "en", "num": 20})
+            with _serper_slots:
+                r = net.request("POST", "https://google.serper.dev/shopping", timeout=SERPER_TIMEOUT_S,
+                                headers={"X-API-KEY": settings.SERPER_API_KEY},
+                                json={"q": q, "gl": gl, "hl": "en", "num": 20})
             metrics.count("serper_queries")
             r.raise_for_status()
             self.cache[key] = {"retrieved_at": now(), "results": r.json().get("shopping", [])}
@@ -145,8 +153,18 @@ class Pricer:
         first = author.split(",")[0].strip()
         last = first.split()[-1] if first else ""
         seen, offers, at = set(), [], ""
-        for q in (f"{title} {last} book", f"{title} {first} paperback", f"{title} {first}"):
-            res = self.shopping(q.strip(), loc["gl"])
+        qs = [q.strip() for q in (f"{title} {last} book", f"{title} {first} paperback", f"{title} {first}")]
+
+        def one(q):  # in parallel: one at a time, a book whose queries each hit a 15-40 s Serper tail took 95 s
+            try:
+                return self.shopping(q, loc["gl"])
+            except httpx.HTTPError as e:
+                return e
+        with ThreadPoolExecutor(3) as ex:
+            got = list(ex.map(one, qs))
+        if all(isinstance(r, Exception) for r in got):
+            raise got[0]
+        for res in (r for r in got if not isinstance(r, Exception)):  # a failed query among three: price on the rest
             at = at or res["retrieved_at"]
             for x in res["results"]:
                 link, lt = x.get("link"), x.get("title", "")
@@ -271,38 +289,42 @@ def run(sweep_dir, books, items, country):
                                             "listing(s): may not be the market price")
             return p
 
-        todo = [b for b in books if not b["excluded"]]
-        with ThreadPoolExecutor(16) as ex:  # Serper: 1-3 s typical, 20-30 s tails and rare 500s; overlap them
-            for b, p in zip(todo, ex.map(price_book, todo)):
-                out_books[b["id"]] = p
-
-        for it in items:
+        def price_item(it):
             p = {"status": "range", "reasons": []}
             if it["category"] == "art" and it["is_print"] is not True:
                 p.update(status="needs_appraisal", reasons=["art defaults to appraisal unless the user confirms a print"])
-            else:
-                try:
-                    rng, q = pr.item_range(it, country)
-                except httpx.HTTPError as e:
-                    metrics.count("price_failures")
-                    rng, q = None, ""
-                    p["reasons"].append(f"price lookup failed ({type(e).__name__}): not priced")
-                p["query"] = q
-                if rng:
-                    p.update(status="priced" if it["brand_model"] else "range", replacement_cost=rng)
-                elif q:
-                    p["reasons"].append(f"no retrievable price for query '{q}'")
-            out_items[it["id"]] = p
-
-        comparison = []
-        other = settings.COMPARISON_COUNTRY if settings.COMPARISON_COUNTRY != country else "GB"
-        for b in [b for b in books if out_books.get(b["id"], {}).get("replacement_cost")][:10]:
+                return p
             try:
-                comparison.append({"id": b["id"], "title": b["title"],
-                                   country: out_books[b["id"]]["replacement_cost"],
-                                   other: pr.book_new(b["title"], b["author"], other)})
+                rng, q = pr.item_range(it, country)
+            except httpx.HTTPError as e:
+                metrics.count("price_failures")
+                rng, q = None, ""
+                p["reasons"].append(f"price lookup failed ({type(e).__name__}): not priced")
+            p["query"] = q
+            if rng:
+                p.update(status="priced" if it["brand_model"] else "range", replacement_cost=rng)
+            elif q:
+                p["reasons"].append(f"no retrievable price for query '{q}'")
+            return p
+
+        other = settings.COMPARISON_COUNTRY if settings.COMPARISON_COUNTRY != country else "GB"
+
+        def compare(b):
+            try:
+                return {"id": b["id"], "title": b["title"], country: out_books[b["id"]]["replacement_cost"],
+                        other: pr.book_new(b["title"], b["author"], other)}
             except httpx.HTTPError:
                 metrics.count("price_failures")
+
+        # one pool for all lookups (Serper: 1-3 s typical, 15-45 s tails and rare 500s; overlap them). Items and the
+        # locale comparison ran one at a time after the books: about a minute of a sweep
+        todo = [b for b in books if not b["excluded"]]
+        with ThreadPoolExecutor(16) as ex:
+            item_prices = ex.map(price_item, items)  # submitted now, runs alongside the books
+            out_books.update(zip((b["id"] for b in todo), ex.map(price_book, todo)))
+            priced = [b for b in books if out_books.get(b["id"], {}).get("replacement_cost")][:10]
+            comparison = [c for c in ex.map(compare, priced) if c]
+            out_items.update(zip((it["id"] for it in items), item_prices))
     finally:
         pr.save()
     return {"books": out_books, "items": out_items,

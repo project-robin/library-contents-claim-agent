@@ -71,6 +71,7 @@ class Session:
         self.closed = self.ended = False
         self.n, self.prev_small, self.selector = 0, None, frames.KeyframeSelector()
         self.last_live_frame = self.last_nudge = 0.0
+        self.last_read_t = -1e9
         self.bad_streak = 0
         self.read_sem, self.read_tasks = asyncio.Semaphore(settings.LIVE_READ_CONCURRENCY), set()
         self.books, self.items, self.unreadable_now = {}, [], 0
@@ -245,7 +246,8 @@ class Session:
         self.bad_streak = self.bad_streak + 1 if q["issue"] else 0
         if self.bad_streak >= 4:
             await self.monitor(NUDGES[q["issue"]])
-        if key:
+        if key and t - self.last_read_t >= settings.READ_GAP_S:
+            self.last_read_t = t
             task = asyncio.create_task(self.read(name, jpeg))
             self.read_tasks.add(task)
             task.add_done_callback(self.read_tasks.discard)

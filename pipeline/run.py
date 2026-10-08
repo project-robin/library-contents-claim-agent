@@ -37,8 +37,15 @@ def keyframes(sd, recompute):
 
 
 def read_missing(sd, kfs):
+    """Gemini reads for keyframes READ_GAP_S apart; the live session already read most of them."""
     (sd / "reads").mkdir(exist_ok=True)
-    todo = [k["frame"] for k in kfs if not (sd / "reads" / f"{k['frame']}.json").exists()]
+    todo, last = [], -1e9
+    for k in sorted(kfs, key=lambda k: k.get("t") or 0):
+        if (sd / "reads" / f"{k['frame']}.json").exists():
+            last = k.get("t") or 0
+        elif (k.get("t") or 0) - last >= settings.READ_GAP_S:
+            todo.append(k["frame"])
+            last = k.get("t") or 0
 
     def one(f):
         try:

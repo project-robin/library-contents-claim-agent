@@ -129,3 +129,19 @@ def test_no_sharp_frames_is_a_clear_error(tmp_path):
     (tmp_path / "sweep.json").write_text("{}")
     with pytest.raises(ValueError, match="no sharp frames"):
         run.run(tmp_path, start="reads", log=lambda s: None)
+
+
+def test_reads_are_spaced_read_gap_apart(tmp_path, monkeypatch):
+    """~50 keyframes a minute against 15 Gemini calls a minute: read one per READ_GAP_S; live reads count."""
+    from pipeline import settings, vision
+    (tmp_path / "frames").mkdir()
+    (tmp_path / "reads").mkdir()
+    kfs = [{"frame": f"{i:06d}.jpg", "t": i * 1.0} for i in range(10)]
+    for k in kfs:
+        (tmp_path / "frames" / k["frame"]).write_bytes(b"x")
+    (tmp_path / "reads" / "000004.jpg.json").write_text(json.dumps({"spines": [], "items": [], "issue": "none"}))
+    read = []
+    monkeypatch.setattr(vision, "read_frame", lambda jpeg: read.append(1) or {"spines": [], "items": [], "issue": "none"})
+    monkeypatch.setattr(settings, "READ_GAP_S", 3.0)
+    got = run.read_missing(tmp_path, kfs)
+    assert sorted(got) == ["000000.jpg", "000003.jpg", "000004.jpg", "000007.jpg"] and len(read) == 3  # 4: live
