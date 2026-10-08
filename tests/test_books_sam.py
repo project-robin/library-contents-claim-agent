@@ -200,3 +200,45 @@ def test_checker_failure_is_unsure_not_a_dead_packet(tmp_path, monkeypatch):
     assert bs[0]["checker"]["verdict"] == "match"
     assert bs[1]["checker"] == {"verdict": "unsure", "reason": "checker unavailable (RuntimeError)"}
     assert bs[1]["title"] == "Die Trying"  # unsure keeps the identity; review.queue flags it
+
+
+def _cl(title, xy, z=0.7, n=3, author="", ori="flat"):
+    m = [{"title": title, "author": author, "orientation": ori} for _ in range(n)]
+    return {"members": m, "center": np.array([*xy, z + 0.01]), "bottom_z": z, "title": title, "orientation": ori}
+
+
+def test_merge_joins_one_book_read_differently_across_frames():
+    """Live video: 'RAAVAN' and 'RAAVAN: ENEMY OF ARYAVARTA', an author line read as the title, and a flipped
+    orientation are one book. 'IKIGAI' beside 'JAPONISME: IKIGAI, ...' and a stacked book 5 cm up are not."""
+    out = books.merge([
+        _cl("RAAVAN: ENEMY OF ARYAVARTA", (0, 0), n=8),
+        _cl("RAAVAN", (0.03, 0), n=2, ori="upright"),
+        _cl("EXAM WARRIORS", (1, 0), author="Narendra Modi", ori="upright"),
+        _cl("Narendra Modi", (1.01, 0), n=1, ori="upright"),
+        _cl("JAPONISME: IKIGAI, FOREST BATHING", (2, 0)),
+        _cl("IKIGAI", (2, 0), z=0.73),
+        _cl("RAAVAN: ENEMY OF ARYAVARTA", (0, 0), z=0.80),  # same title 10 cm up: another copy in the stack
+    ])
+    titles = sorted(c["title"] for c in out)
+    assert titles == ["EXAM WARRIORS", "IKIGAI", "JAPONISME: IKIGAI, FOREST BATHING", "RAAVAN: ENEMY OF ARYAVARTA",
+                      "RAAVAN: ENEMY OF ARYAVARTA"]
+    raavan = max((c for c in out if c["title"].startswith("RAAVAN")), key=lambda c: len(c["members"]))
+    assert len(raavan["members"]) == 10 and raavan["orientation"] == "flat"
+    assert not books.titled("4") and not books.titled("THE") and books.titled("Sita")
+
+
+def test_seen_once_drops_unread_single_views_only_in_a_long_sweep():
+    unread, read = _cl("", (0, 0), n=1), _cl("SITA", (1, 0), n=1)
+    assert books.seen_once([unread, read], frames=60) == ([read], [unread])
+    assert books.seen_once([unread, read], frames=1) == ([unread, read], [])  # a still photo: every box is one view
+
+
+def test_neighbour_words_on_an_angled_crop_do_not_veto():
+    """The Secret of the Nagas crop also shows Ruskin Bond's spine: those words are the neighbour's, not a veto."""
+    cand = {"title": "The Secret of the Nagas", "authors": ["Amish"]}
+    ocr = {"words": [["RUSKIN BOND", 0.99], ["ROOM ON THE ROOF", 0.99]], "rotation": 0}
+    _, conf, w = spine_ocr.witness(cand, 0.9, ocr, set(), "Amish", {})
+    assert w["ocr_veto"]  # no neighbours known: vetoed, as before
+    cand2, conf, w = spine_ocr.witness(cand, 0.9, ocr, set(), "Amish", {},
+                                        neighbours=["The Room on the Roof Ruskin Bond"])
+    assert cand2 is cand and conf == 0.9 and not w["ocr_veto"]

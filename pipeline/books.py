@@ -39,6 +39,23 @@ def sim(a, b):
     return min(r, 0.5) if re.findall(r"\d+", a) != re.findall(r"\d+", b) else r
 
 
+def titled(s):
+    """A read worth matching on: 4+ letters. A bare number, article or clipped word ('4', 'THE', 'ISH') is not."""
+    n = norm(s)
+    return n if len(re.sub(r"[^a-z]", "", n)) >= 4 else ""
+
+
+def related(a, b):
+    """Two reads of one spine: near-identical, or one starts or ends the other ('RAAVAN' / 'RAAVAN: ENEMY OF
+    ARYAVARTA', 'OF SECRETS' / 'THE SHIP OF SECRETS'). A title inside a longer one ('IKIGAI' in 'JAPONISME: IKIGAI,
+    FOREST BATHING...') is a different book."""
+    a, b = titled(a), titled(b)
+    if not (a and b):
+        return False
+    short, long_ = sorted((a, b), key=len)
+    return sim(a, b) >= 0.85 or long_.startswith(short) or long_.endswith(short)
+
+
 def load_notes(sweep_dir):
     p = sweep_dir / "notes.jsonl"
     return [json.loads(x) for x in p.read_text().splitlines() if x] if p.exists() else []
@@ -75,11 +92,15 @@ def crop(sweep_dir, frame, box_2d, out_path, pad=0.08):
 # ---------- dedup ----------
 
 def detections(reads, times, geo):
+    """overlap: the box's highest IoU with another box in its frame. On a stack filmed at an angle, axis-aligned
+    boxes of diagonal spines take in their neighbours (most boxes overlap > 0.2 there, under 12% on a straight-on
+    shelf photo), so a crop from such a box shows the neighbour's text too."""
     dets = []
     for f, r in reads.items():
         for k, s in enumerate(r["spines"]):
             d = {"id": f"{f}:{k}", "frame": f, "t": times.get(f), **s,
-                 "area": (s["box_2d"][2] - s["box_2d"][0]) * (s["box_2d"][3] - s["box_2d"][1])}
+                 "area": (s["box_2d"][2] - s["box_2d"][0]) * (s["box_2d"][3] - s["box_2d"][1]),
+                 "overlap": max([iou(s["box_2d"], o["box_2d"]) for j, o in enumerate(r["spines"]) if j != k] or [0.0])}
             m = geo.spine(f, s["box_2d"], s["orientation"]) if geo.ok else None
             if m:
                 d.update(m)
@@ -157,7 +178,7 @@ def cluster(dets):
                 continue
             dist = float(np.linalg.norm(c["center"][:2] - d["center"][:2]))
             s = sim(c["title"], d["title"])
-            both = bool(norm(c["title"]) and norm(d["title"]))
+            both = bool(titled(c["title"]) and titled(d["title"]))
             radius = float(np.clip(0.6 * min(c["thickness_cm"], d["thickness_cm"]) / 100, 0.008, 0.03))
             ok = (dist < radius and not (both and s < 0.5)) or (both and s >= 0.85 and dist < 0.15)
             if ok and dist < best_dist:
@@ -170,9 +191,48 @@ def cluster(dets):
             n = len(best["members"])
             best["center"] = best["center"] + (d["center"] - best["center"]) / n
             best["bottom_z"] += (d["bottom_z"] - best["bottom_z"]) / n
-            if not norm(best["title"]):
+            if not titled(best["title"]):
                 best["title"] = d["title"]
     return clusters
+
+
+def merge(clusters):
+    """Second pass over cluster(). In a video, one book read differently across frames, or seeded by an unread box
+    before a read one joined, or with its orientation flipping (a tilted spine's box is near square), lands in two
+    clusters; so does a read of the author line as the title ('NARENDRA MODI' beside 'EXAM WARRIORS'). Join such pairs
+    within 15 cm. Position alone is not enough: on a stack filmed at an angle, neighbouring books' boxes overlap and
+    their centres coincide."""
+    out = []
+    for c in sorted(clusters, key=lambda c: -len(c["members"])):
+        best = None
+        for o in out:
+            dxy = float(np.linalg.norm(o["center"][:2] - c["center"][:2]))
+            dz = abs(o["bottom_z"] - c["bottom_z"])
+            same = related(o["title"], c["title"]) or any(related(c["title"], m["author"]) for m in o["members"])
+            if same and dxy < 0.15 and dz <= 0.08:
+                best = o
+                break
+        if best is None:
+            out.append(c)
+            continue
+        n0, n1 = len(best["members"]), len(c["members"])
+        best["members"] += c["members"]
+        best["center"] = (best["center"] * n0 + c["center"] * n1) / (n0 + n1)
+        best["bottom_z"] = (best["bottom_z"] * n0 + c["bottom_z"] * n1) / (n0 + n1)
+        if not titled(best["title"]):
+            best["title"] = c["title"]
+    for c in out:
+        c["orientation"] = Counter(m["orientation"] for m in c["members"]).most_common(1)[0][0]
+    return out
+
+
+def seen_once(clusters, frames):
+    """In a sweep of 20+ frames a real spine shows in several; one seen in a single frame with no text is a stray box
+    (wall edge, a neighbour's sliver). Returns (kept, dropped)."""
+    if frames < 20:
+        return clusters, []
+    drop = [c for c in clusters if len(c["members"]) == 1 and not titled(c["title"])]
+    return [c for c in clusters if c not in drop], drop
 
 
 def vote(texts):
@@ -408,10 +468,10 @@ def run(sweep_dir, reads, geo, spines=None):
     dets = detections(src, times, geo)
     with_3d = [d for d in dets if "center" in d]
     if geo.ok and with_3d:
-        clusters = cluster(dets)
+        clusters, dropped = seen_once(merge(cluster(dets)), len({d["frame"] for d in with_3d}))
         assign_shelves(clusters)
     else:
-        clusters = layout_2d(dets)
+        clusters, dropped = layout_2d(dets), []
     det_to_c = {m["id"]: c for c in clusters for m in c["members"]}
 
     (sweep_dir / "crops").mkdir(exist_ok=True)
@@ -419,7 +479,11 @@ def run(sweep_dir, reads, geo, spines=None):
     rereads = []
     for n, c in enumerate(clusters, 1):
         c["id"] = f"b_{n:03d}"
-        best = max(c["members"], key=lambda m: (LEG_W[m["legibility"]], m["area"]))
+        # the crop OCR reads: the best read; among those, a view clear of neighbouring boxes if one is at least half
+        # the size of the largest (a clear view is often a far, blurred one); then the largest
+        big = max(m["area"] for m in c["members"])
+        best = max(c["members"], key=lambda m: (LEG_W[m["legibility"]], m["overlap"] < 0.2 and m["area"] >= big / 2,
+                                                m["area"]))
         c["best"] = best
         c["crop_bytes"] = crop(sweep_dir, best["frame"], best["box_2d"], sweep_dir / "crops" / f"{c['id']}.jpg")
         c["texts"] = [(m["title"], m["author"], m["publisher"], LEG_W[m["legibility"]]) for m in c["members"]]
@@ -468,9 +532,11 @@ def run(sweep_dir, reads, geo, spines=None):
 
     # OCR witness: veto claims the spine's own text contradicts, then try fragments on spines still unread
     witness = []
-    for c, (title, author, _, _), (cand, conf, name_only) in zip(clusters, votes, resolved):
-        witness.append((*spine_ocr.witness(cand, conf, c["ocr"], boiler, author, cache, bool(c.get("excluded"))),
-                        name_only))
+    said = [f"{t} {a}" for t, a, _, _ in votes]
+    for i, (c, (title, author, _, _), (cand, conf, name_only)) in enumerate(zip(clusters, votes, resolved)):
+        neighbours = [r for j, r in enumerate(said) if j != i and titled(votes[j][0]) and not related(votes[j][0], title)]
+        witness.append((*spine_ocr.witness(cand, conf, c["ocr"], boiler, author, cache, bool(c.get("excluded")),
+                                           neighbours), name_only))
     witness = [(cand, conf, name_only, w) for cand, conf, w, name_only in witness]
     # a fragment ID equal to an adjacent spine's title is a crop that drifted onto the neighbour: drop it
     for i, (cand, conf, name_only, w) in enumerate(witness):
@@ -531,7 +597,8 @@ def run(sweep_dir, reads, geo, spines=None):
     kept = [b for b in books if not b["excluded"]]
     stats = {"detections": len(dets), "detections_without_3d": len(dets) - len(with_3d),
              "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept),
-             "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched}
+             "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched,
+             "seen_once_dropped": len(dropped)}
     if not geo.ok:
         stats["warning"] = "no metric geometry: books could not be deduplicated or measured"
     return {"books": books, "stats": stats}

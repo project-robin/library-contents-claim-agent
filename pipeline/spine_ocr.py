@@ -138,12 +138,17 @@ def fragment_lookup(toks, author, cache):
     return keep[ranked[0]], round(p1, 3), toks
 
 
-def witness(cand, conf, ocr, boiler, author, cache, excluded=False):
-    """The OCR decision for one spine, shared by the pipeline and the photo scorer. Returns (cand, conf, info)."""
-    toks = distinct(ocr, boiler, author)
+def witness(cand, conf, ocr, boiler, author, cache, excluded=False, neighbours=()):
+    """The OCR decision for one spine, shared by the pipeline and the photo scorer. Returns (cand, conf, info).
+    neighbours: the other books' read titles and authors in this sweep. A crop of a spine filmed at an angle takes in
+    the next spines ('RUSKIN BOND' on The Secret of the Nagas): their words neither veto this claim nor seed a
+    fragment lookup. A claim that drifted onto the neighbour then keeps no OCR support and goes to review."""
+    own = lambda t: cand and supports(f"{cand['title']} {' '.join(cand.get('authors', []))}", [t])
+    near = lambda ts: [t for t in ts if own(t) or not any(supports(n, [t]) for n in neighbours)]
+    toks = near(distinct(ocr, boiler, author))
     # veto evidence must be strong: 'NON' (0.90, upside-down read) and 'WON' (0.83) vetoed No Middle Name;
     # the candidate's own author on the spine ('JHUMPA LAHIRI' on The Lowland) supports it, never contradicts
-    strong = distinct(ocr, boiler, author, min_score=settings.OCR_VETO_SCORE, min_len=4)
+    strong = near(distinct(ocr, boiler, author, min_score=settings.OCR_VETO_SCORE, min_len=4))
     w = {"ocr_veto": "", "id_source": "spine_read" if cand and conf >= settings.CONF_MIN else "", "fragments": []}
     if cand and conf >= settings.CONF_MIN and veto(f"{cand['title']} {cand.get('subtitle', '')} {' '.join(cand.get('authors', []))}", strong):
         w.update(ocr_veto=cand["title"], veto_tokens=strong, id_source="")

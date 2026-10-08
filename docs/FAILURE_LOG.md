@@ -75,6 +75,42 @@ Because of the spent quota, all 141 checker verdicts on this run are `unsure` (c
 The books stage is the latency problem: on free-tier quotas, catalogue rate limits and crop-reader timeouts dominate.
 Next step would be a time budget for catalogue lookups (spines past it go to review unidentified).
 
+## Live phone sweeps, one home (21 books, 2026-10-08)
+
+Three live sweeps by a tester gave 66, 66 and 59 books for 21 real ones. The offline tests had shown none of this,
+because they were straight-on still photos: one frame, upright spines, separate boxes. The live sweeps were video
+(69 to 106 keyframes) with a flat stack filmed from above and from the side.
+
+| | Photos A, B | Live sweeps |
+|---|---|---|
+| SAM boxes overlapping a neighbour's box (IoU > 0.2) | 4%, 12% | 76 to 79% |
+| Frames per book | 1 | 5 to 25 |
+
+SAM 3.1 finds the spines. The trouble comes from what we keep: only its axis-aligned box. Its mask uses an
+undocumented encoding (`one_bit`/`lossless`; base-85-like text that does not decode as plain base-85 or deflate).
+On a slanted spine that box covers the next two spines, which caused three failures:
+1. **Duplicates.** One book read differently across frames ('RAAVAN' / 'RAAVAN: ENEMY OF ARYAVARTA'), or with its
+   orientation flipping (a slanted box is near square), or its author line read as a title, became 2 or 3 books.
+   Fix: `books.merge()` joins related titles within 15 cm; reads of under 4 letters ('4', 'THE') are not titles.
+   `books.seen_once()` drops boxes seen in a single frame and never read, in sweeps of 20+ frames. A rule that merged
+   by position alone (1.2 cm) joined different books, because overlapping boxes share one centre. It was dropped.
+2. **Neighbour text vetoed right titles.** The crop of The Secret of the Nagas read 'RUSKIN BOND ... ROOF', and the
+   OCR veto cleared the correct claim. Fix: `spine_ocr.witness(neighbours=)` ignores words of other books' reads in
+   the same sweep. A claim that drifted onto the neighbour now loses OCR support and goes to review at 0.5.
+3. **Filming.** The live agent now asks for the phone to face the spines head-on, crouching for a flat stack.
+
+Offline rerun of the books stage (no Gemini quota left that day, so no crop reader and no checker in either column):
+
+| Sweep | Count before → after (truth 21) | Distinct right titles | Confidently wrong |
+|---|---|---|---|
+| 182930 | 66 → 39 | 14 → 19 | 1 → 0 |
+| 184815 | 66 → 43 | 16 → 14 (before had the crop reader) | 2 → 1 |
+| 203017 | 59 → 31 | 13 → 17 | 2 → 1 |
+| Photo A / B (truth 44 / 40) | 46 / 40 → 46 / 40 | 27/37, 18/20 → 28/37, 19/20 | 0 → 0 |
+
+Count is still +48 to +105% on the live sweeps: unread boxes and wrong claims on the overlapping stack. The fix that
+remains is a per-spine outline (a decoded SAM mask, or a rotated box) for the crop and the 3D point.
+
 ## With two more weeks
 - Android WebXR/ARCore depth and poses as a second metric source (no marker needed).
 - Condition grading per spine feeding the used value.
