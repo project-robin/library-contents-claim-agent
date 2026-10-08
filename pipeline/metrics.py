@@ -53,6 +53,7 @@ def snapshot():
         cost["serper"] = round(_counters.get("serper_queries", 0) * settings.SERPER_COST_PER_QUERY, 4)
         cost["gpu"] = round(_counters.get("gpu_seconds", 0) * settings.GPU_COST_PER_S, 4)
         cost["ocr"] = round(_counters.get("ocr_seconds", 0) * settings.OCR_COST_PER_S, 4)
+        cost["sam"] = round(_counters.get("sam_images", 0) * settings.SAM_COST_PER_IMAGE, 4)
         return {
             "latency_s": dict(_stages),
             "tokens": {m: {"in": a, "out": b} for m, (a, b) in _tokens.items()},

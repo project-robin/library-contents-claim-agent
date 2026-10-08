@@ -5,7 +5,7 @@ import json
 import cv2
 import numpy as np
 
-from pipeline import books, drex, run, settings, spine_ocr, vision
+from pipeline import books, drex, run, sam, settings, spine_ocr, vision
 from pipeline.geometry import ARUCO
 
 L, W, H, K_SCALE = 4.0, 3.0, 2.6, 0.37  # K_SCALE: reconstruction units are not metres
@@ -89,9 +89,7 @@ def make_sweep(sd):
                                                "duration_s": 60}))
 
 
-def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
-    sd = tmp_path / "sweep"
-    make_sweep(sd)
+def stub_apis(monkeypatch):
     monkeypatch.setattr(vision, "read_crops", lambda js: [{"title": "", "author": "", "publisher": "",
                                                            "legibility": "none"} for _ in js])
     monkeypatch.setattr(vision, "check_identity", lambda c, t, a: {"verdict": "match", "reason": "stub"})
@@ -102,8 +100,9 @@ def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(spine_ocr, "read", lambda crops: [{"words": [], "rotation": None} for _ in crops])
     monkeypatch.setattr(settings, "require", lambda what: None)
     monkeypatch.setattr(settings, "SERPER_API_KEY", "")  # no network: pricing finds nothing and must invent nothing
-    p = run.run(sd, start="geometry", log=lambda s: None)
 
+
+def check_packet(sd, p):
     r = p["room"]
     assert "marker" in r["scale_method"]
     assert abs(r["floor_area_m2"] - L * W) / (L * W) < 0.05, r
@@ -123,3 +122,38 @@ def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
     for b in p["books"]:
         assert (sd / b["frame_ref"].split("#")[0]).exists() and (sd / b["crop"]).exists()
     assert (sd / "report.html").read_text().count("<tr>") > N_BOOKS
+
+
+def test_synthetic_room_end_to_end(tmp_path, monkeypatch):
+    sd = tmp_path / "sweep"
+    make_sweep(sd)
+    stub_apis(monkeypatch)
+    monkeypatch.setattr(settings, "SPINE_SOURCE", "gemini")
+    p = run.run(sd, start="geometry", log=lambda s: None)
+    check_packet(sd, p)
+    assert any("spines from vision model" in q["reason"] for q in p["review_queue"])
+
+
+def test_synthetic_room_with_sam_spines(tmp_path, monkeypatch):
+    """Same room with spine boxes from SAM (stubbed: each frame's spines in pixels): same counts, and the
+    vision model's spines only lend their titles as claims."""
+    sd = tmp_path / "sweep"
+    make_sweep(sd)
+    stub_apis(monkeypatch)
+    by_jpeg = {}  # frame bytes -> SAM-style pixel boxes (frames without spines are identical blanks -> [])
+    for f in sorted((sd / "reads").iterdir()):
+        sp = json.loads(f.read_text())["spines"]
+        by_jpeg.setdefault((sd / "frames" / f.name[:-5]).read_bytes(), []).extend(
+            {"id": i, "box": [round(s["box_2d"][1] * FW / 1000), round(s["box_2d"][0] * FH / 1000),
+                              round(s["box_2d"][3] * FW / 1000) - 1, round(s["box_2d"][2] * FH / 1000) - 1],
+             "w": FW, "h": FH} for i, s in enumerate(sp))
+    monkeypatch.setattr(settings, "SPINE_SOURCE", "sam")
+    monkeypatch.setattr(settings, "META_API_KEY", "k")
+    monkeypatch.setattr(sam, "segment", lambda jpeg, prompt=None: by_jpeg[jpeg])
+    p = run.run(sd, start="spines", skip=("recon",), log=lambda s: None)
+    check_packet(sd, p)
+    assert len(list((sd / "spines").iterdir())) == len(json.loads((sd / "keyframes.json").read_text()))
+    assert not any("spines from vision model" in q["reason"] for q in p["review_queue"])
+    out = json.loads((sd / "books.json").read_text())
+    assert out["stats"]["spine_source"] == "sam" and out["stats"]["vision_spines_unmatched"] == 0
+    assert sorted(b["id_source"] for b in out["books"] if b["title"]) == ["spine_read"] * 10

@@ -61,3 +61,18 @@ def segment(jpeg, prompt=None):
     metrics.count("sam_images")
     metrics.count("sam_seconds", time.perf_counter() - t0)
     return parse(text)
+
+
+def to_spines(boxes):
+    """SAM boxes -> the spine shape vision reads use, so detections/cluster/geometry.spine work unchanged.
+    Text fields stay empty: a spine's identity comes from OCR on its own crop and from matched reader claims."""
+    out = []
+    for b in boxes:
+        x1, y1, x2, y2 = b["box"]
+        w, h = b["w"], b["h"]
+        out.append({"box_2d": [round(y1 / h * 1000, 1), round(x1 / w * 1000, 1),  # x2/y2 inclusive: +1
+                               round((y2 + 1) / h * 1000, 1), round((x2 + 1) / w * 1000, 1)],
+                    "orientation": "flat" if (x2 - x1) > 1.6 * (y2 - y1) else "upright",
+                    "legibility": "none", "title": "", "author": "", "publisher": "", "marks": [],
+                    "source": "sam", "sam_id": b["id"]})
+    return out

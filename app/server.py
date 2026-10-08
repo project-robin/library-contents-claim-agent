@@ -51,6 +51,18 @@ def warm_modal():
         log.warning("modal warm-up failed: %s", e)
 
 
+def warm_ocr():
+    """The spine OCR container cold-starts in ~20 s; wake it while the user is still filming."""
+    if not settings.OCR_ENABLED:
+        return
+    try:
+        from gpu.modal_ocr import remote
+        remote().ping.remote()
+        log.info("ocr warm")
+    except Exception as e:  # app not deployed: spine_ocr.read returns empty reads, the packet still builds
+        log.warning("ocr warm-up failed: %s", e)
+
+
 class Session:
     def __init__(self, ws):
         self.ws, self.lock = ws, asyncio.Lock()
@@ -117,7 +129,8 @@ class Session:
         self.frames_log = open(self.dir / "frames.jsonl", "a")
         await self.send_json({"type": "sweep", "id": self.id})
         log.info("sweep %s started", self.id)
-        tasks = [asyncio.create_task(self.live_loop()), asyncio.create_task(asyncio.to_thread(warm_modal))]
+        tasks = [asyncio.create_task(self.live_loop()), asyncio.create_task(asyncio.to_thread(warm_modal)),
+                 asyncio.create_task(asyncio.to_thread(warm_ocr))]
         try:
             await self.browser_loop()
         except WebSocketDisconnect:

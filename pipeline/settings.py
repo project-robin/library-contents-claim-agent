@@ -80,7 +80,8 @@ class Settings(BaseSettings):
 # ponytail: module attributes keep call sites as `settings.X`
 globals().update(Settings().model_dump())
 
-REQUIRED = {"live": ["GEMINI_API_KEY"], "pipeline": ["GEMINI_API_KEY", "SERPER_API_KEY", "DREX_API_KEY"]}
+REQUIRED = {"live": ["GEMINI_API_KEY"], "pipeline": ["GEMINI_API_KEY", "SERPER_API_KEY", "DREX_API_KEY"],
+            "books": ["GEMINI_API_KEY", "DREX_API_KEY"]}  # a run that stops before pricing (--until)
 
 
 def require(what):

@@ -17,6 +17,7 @@ from pipeline import drex, metrics, net, settings, vision
 from pipeline.geometry import box_px
 
 LEG_W = {"full": 2, "partial": 1, "none": 0}
+LEGIBLE = ["none", "partial", "partial", "full"]  # by distinctive OCR word count: 0, 1-2, 3+
 SAME_WORK_Q = ("Is catalogue candidate {c} the same book (same work) as the text read from the spine? Spine text may be "
                "partial, abbreviated or show only the author's surname. A different volume number, a different work by "
                "the same author, or a guess that the spine text does not support means no.")
@@ -83,6 +84,64 @@ def detections(reads, times, geo):
                 d.update(m)
             dets.append(d)
     return dets
+
+
+def iou(a, b):
+    """Overlap of two box_2d [ymin, xmin, ymax, xmax] boxes, 0-1."""
+    h = min(a[2], b[2]) - max(a[0], b[0])
+    w = min(a[3], b[3]) - max(a[1], b[1])
+    inter = max(h, 0) * max(w, 0)
+    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def claims(spines, reads):
+    """SAM boxes carry no text. The vision model's spine on the same frame that overlaps a SAM box most (IoU >= 0.3)
+    lends it title/author as a claim, which the crop's OCR then confirms or vetoes. Greedy by IoU, one-to-one: a
+    drifting vision box can claim only one spine. Returns reads-shaped {frame: {"spines": [...]}} and the number of
+    vision spines left unmatched (dropped)."""
+    out, unmatched = {}, 0
+    for f, boxes in spines.items():
+        gem = reads.get(f, {}).get("spines", [])
+        pairs = sorted(((iou(s["box_2d"], g["box_2d"]), i, j) for i, s in enumerate(boxes) for j, g in enumerate(gem)),
+                       reverse=True)
+        dets, used_i, used_j = [dict(s) for s in boxes], set(), set()
+        for v, i, j in pairs:
+            if v < 0.3:
+                break
+            if i in used_i or j in used_j:
+                continue
+            used_i.add(i), used_j.add(j)
+            dets[i].update({k: gem[j][k] for k in ("title", "author", "publisher", "marks", "legibility")},
+                           claim_iou=round(v, 2))
+        unmatched += len(gem) - len(used_j)
+        out[f] = {"spines": dets}
+    return out, unmatched
+
+
+def layout_2d(dets):
+    """No geometry (a still photo, or reconstruction failed): spines cannot be matched across frames, so each
+    detection is its own book. Per frame (unit A, B, ...): rows top to bottom, a box joining a row when it shares
+    >= 50% of the smaller height with the row's span; then left to right within the row."""
+    clusters = []
+    for fi, f in enumerate(dict.fromkeys(d["frame"] for d in dets)):
+        rows = []
+        for d in sorted((d for d in dets if d["frame"] == f), key=lambda d: d["box_2d"][0]):
+            y0, y1 = d["box_2d"][0], d["box_2d"][2]
+            row = next((r for r in rows if min(y1, r["y1"]) - max(y0, r["y0"]) >= 0.5 * min(y1 - y0, r["y1"] - r["y0"])),
+                       None)
+            if row:
+                row.update(y0=min(y0, row["y0"]), y1=max(y1, row["y1"]))
+                row["dets"].append(d)
+            else:
+                rows.append({"y0": y0, "y1": y1, "dets": [d]})
+        letter = chr(65 + fi) if fi < 26 else f"U{fi}"
+        for ri, row in enumerate(rows, 1):
+            for pi, d in enumerate(sorted(row["dets"], key=lambda d: d["box_2d"][1]), 1):
+                clusters.append({"members": [d], "center": np.zeros(3), "orientation": d["orientation"],
+                                 "bottom_z": 0.0, "title": d["title"], "unit": letter, "row": ri,
+                                 "shelf": f"{letter}-{ri}", "position": pi})
+    return clusters
 
 
 def cluster(dets):
@@ -281,12 +340,35 @@ def author_only(title, author, cands):
 
 # ---------- stage ----------
 
-def run(sweep_dir, reads, geo):
+def crop_reader(t, ocr, cache):
+    """Last resort for a spine OCR could not read distinctively: the vision model reads the crop alone. Returns
+    (cand, conf, ocr_support). The catalogue title must share a word with the crop's OCR words (any score); words
+    that are the candidate's author neither support nor contradict. No title-relevant OCR words at all -> accepted
+    at most at CONF_MIN and sent to review: flash-lite invents titles under price stickers."""
+    if not norm(t["title"]):
+        return None, 0.0, False
+    cand, conf, _ = resolve(t["title"], t["author"], t["publisher"], 1.0, cache)  # one read agrees with itself
+    if not (cand and conf >= settings.CONF_MIN):
+        return None, 0.0, False
+    from pipeline import spine_ocr  # imports this module
+    toks = spine_ocr.tokens(" ".join(w[0] for w in ocr["words"]))
+    toks = [x for x in toks if not spine_ocr.supports(" ".join(cand["authors"]), [x])]
+    if not toks:
+        return cand, min(conf, settings.CONF_MIN), False
+    return (cand, conf, True) if spine_ocr.supports(cand["title"], toks) else (None, 0.0, False)
+
+
+def run(sweep_dir, reads, geo, spines=None):
+    """spines: {frame: [SAM detections]} from the spines stage, or None to use the vision model's boxes."""
     times = frame_times(sweep_dir)
-    dets = detections(reads, times, geo)
+    src, unmatched = claims(spines, reads) if spines is not None else (reads, 0)
+    dets = detections(src, times, geo)
     with_3d = [d for d in dets if "center" in d]
-    clusters = cluster(dets)
-    assign_shelves(clusters)
+    if geo.ok and with_3d:
+        clusters = cluster(dets)
+        assign_shelves(clusters)
+    else:
+        clusters = layout_2d(dets)
     det_to_c = {m["id"]: c for c in clusters for m in c["members"]}
 
     (sweep_dir / "crops").mkdir(exist_ok=True)
@@ -298,7 +380,8 @@ def run(sweep_dir, reads, geo):
         c["best"] = best
         c["crop_bytes"] = crop(sweep_dir, best["frame"], best["box_2d"], sweep_dir / "crops" / f"{c['id']}.jpg")
         c["texts"] = [(m["title"], m["author"], m["publisher"], LEG_W[m["legibility"]]) for m in c["members"]]
-        if any(norm(t[0]) for t in c["texts"]) and (len(c["members"]) == 1 or vote(c["texts"])[3] < 1):
+        # SAM path: no reread of claims; the vision model only reads crops OCR could not (crop_reader, below)
+        if spines is None and any(norm(t[0]) for t in c["texts"]) and (len(c["members"]) == 1 or vote(c["texts"])[3] < 1):
             rereads.append(c)
     batches = [rereads[i:i + 12] for i in range(0, len(rereads), 12)]
     with ThreadPoolExecutor(4) as ex:  # one batch at a time took minutes on a 150-book shelf
@@ -323,7 +406,7 @@ def run(sweep_dir, reads, geo):
     for note in load_notes(sweep_dir):
         if note.get("target", "book") != "book" or note["kind"] not in ("note", "exclude"):
             continue
-        did = nearest_det(reads, times, note["t"], "spines")
+        did = nearest_det(src, times, note["t"], "spines")
         c = det_to_c.get(did)
         if not c:
             continue
@@ -356,6 +439,19 @@ def run(sweep_dir, reads, geo):
                     and o[3]["id_source"] == "spine_read":
                 witness[i] = (None, 0.0, name_only, {**w, "id_source": "", "dropped_as_neighbour": cand["title"]})
                 break
+    if spines is not None:  # crop reader: still unidentified, no distinctive OCR words, not excluded
+        todo = [i for i, (c, (cand, conf, *_)) in enumerate(zip(clusters, witness))
+                if not (cand and conf >= settings.CONF_MIN) and not c.get("excluded")
+                and not spine_ocr.distinct(c["ocr"], boiler, votes[i][1])]
+        batches = [todo[k:k + 12] for k in range(0, len(todo), 12)]
+        with ThreadPoolExecutor(4) as ex:
+            for batch, texts in zip(batches, ex.map(lambda b: vision.read_crops([clusters[i]["crop_bytes"] for i in b]),
+                                                    batches)):
+                for i, t in zip(batch, texts):
+                    cand, conf, support = crop_reader(t, clusters[i]["ocr"], cache)
+                    if cand:
+                        witness[i] = (cand, conf, False, {**witness[i][3], "id_source": "crop_reader",
+                                                          "crop_read": t["title"], "ocr_support": support})
     resolved = [x[:3] for x in witness]
     books = []
     for c, (title, author, publisher, agreement), (cand, conf, name_only), (*_, w) in zip(clusters, votes, resolved, witness):
@@ -370,6 +466,7 @@ def run(sweep_dir, reads, geo):
             "views": len(c["members"]), "spine_text": {"title": title, "author": author, "publisher": publisher},
             "read_agreement": round(agreement, 2), "author_only": name_only,
             "ocr_text": spine_ocr.ocr_text(c["ocr"]), "ocr_rotation": c["ocr"]["rotation"], **w,
+            "legibility": LEGIBLE[min(len(spine_ocr.distinct(c["ocr"], boiler)), 3)],
             "title": cand["title"] if cand and conf >= settings.CONF_MIN else "",
             "author": ", ".join(cand["authors"]) if cand and conf >= settings.CONF_MIN else "",
             "edition": f"{cand['publisher']} {cand['year']}".strip() if publisher_ok and conf >= settings.CONF_MIN else "",
@@ -385,7 +482,8 @@ def run(sweep_dir, reads, geo):
     cache_p.write_text(json.dumps(cache))
     kept = [b for b in books if not b["excluded"]]
     stats = {"detections": len(dets), "detections_without_3d": len(dets) - len(with_3d),
-             "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept)}
+             "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept),
+             "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched}
     if not geo.ok:
         stats["warning"] = "no metric geometry: books could not be deduplicated or measured"
     return {"books": books, "stats": stats}
