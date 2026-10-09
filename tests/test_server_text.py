@@ -62,3 +62,24 @@ def test_same_art_seen_again_is_asked_about_once(tmp_path, monkeypatch):
         asyncio.run(s.read(f"{i:06d}.jpg", b"x"))
     asked = [t for t in s.live.texts if "original or a print" in t]
     assert len(asked) == 2 and "Spider-Man" in asked[0] and "portrait" in asked[1]  # portrait at 15 s waited: 40 s
+
+
+def test_user_can_remove_an_item_that_is_not_there(tmp_path):
+    """Sweep 230330: 'There is no photograph on the wall.' The agent could only apologise and the phantom art stayed
+    in the packet. remove_item by id, or by description when the agent has no id, records it for the items stage."""
+    s = server.Session(FakeWS([]))
+    s.live, s.dir, s.t0 = FakeLive(), tmp_path, 0.0
+    s.items = [{"id": "i1", "category": "art", "description": "Spider-Man painting", "det_id": "000010.jpg:0"},
+               {"id": "i2", "category": "art", "description": "Framed photograph on the wall", "det_id": "000020.jpg:1"}]
+
+    async def go():
+        await s.tool(SimpleNamespace(args={"description": "photograph on the wall", "reason": "there is no photograph"},
+                                     name="remove_item", id="1"))
+        await s.tool(SimpleNamespace(args={"description": "abstract art", "reason": "no abstract art"},
+                                     name="remove_item", id="2"))
+    asyncio.run(go())
+    notes = [json.loads(x) for x in (tmp_path / "notes.jsonl").read_text().splitlines()]
+    assert notes[0]["kind"] == "removed" and notes[0]["det_id"] == "000020.jpg:1"
+    assert [i["id"] for i in s.items] == ["i1"]
+    assert notes[1]["det_id"] is None and notes[1]["description"] == "abstract art"  # kept for the review queue
+    assert s.live.tool_responses[0].response["removed"] == "i2"

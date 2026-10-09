@@ -32,9 +32,19 @@ def checker(sweep_dir, books):
     return books
 
 
-def queue(geometry, books, items, book_prices, item_prices, book_stats):
+def queue(geometry, books, items, book_prices, item_prices, book_stats, item_stats=None):
     q = []
     add = lambda ref, reason: q.append({"ref_id": ref, "reason": reason})
+    item_stats = item_stats or {}
+    for r in item_stats.get("removed_by_user", []):
+        add("items", f"user said '{r['description']}' is not in the room ({r['reason'] or 'no reason given'}): "
+                     + ("no line matched it" if r.get("no_line") else "line removed"))
+    if n := item_stats.get("marker_detections_dropped"):
+        add("items", f"{n} item detections showed the printed scale marker and were not counted as items")
+    for r in item_stats.get("reconciled", []):
+        add(r["into"] or "items", f"item line {r['id']} " + (f"merged into {r['into']}" if r["into"] else
+                                                            f"not counted ({r['action'].replace('_', ' ')})")
+            + f" by the item check: {r['reason']}")
 
     if not geometry.get("scale"):
         add("room", "no metric scale: marker not seen and too few measurable spines")

@@ -352,6 +352,22 @@ class Session:
                 self.note(kind="fact", det_id=it["det_id"], is_print=bool(a.get("is_print")), item_id=it["id"])
             else:
                 res = {"ok": False, "error": "unknown item id"}
+        elif name == "remove_item":
+            # the user said 'there is no photograph on the wall' twice and the agent could only apologise: the
+            # phantom art stayed in the packet as needs-appraisal
+            it = next((i for i in self.items if i["id"] == a.get("item_id")), None)
+            if not it and a.get("description"):
+                want = set(re.sub(r"[^a-z ]", "", a["description"].lower()).split())
+                score = lambda i: len(want & set(re.sub(r"[^a-z ]", "", i["description"].lower()).split()))
+                best = max(self.items, key=score, default=None)
+                it = best if best and score(best) else None
+            self.note(kind="removed", det_id=it and it["det_id"], item_id=it and it["id"], text=a.get("reason", ""),
+                      description=a.get("description") or (it and it["description"]) or "")
+            if it:
+                self.items.remove(it)
+                await self.send_json({"type": "inventory", "books": list(self.books.values()),
+                                      "items": self.items, "unreadable_now": self.unreadable_now})
+            res["removed"] = it["id"] if it else "recorded for review (no matching item seen yet)"
         elif name == "end_sweep":
             res["status"] = "building the claim packet"
             asyncio.create_task(self.finish())

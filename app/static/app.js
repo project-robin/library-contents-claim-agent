@@ -4,7 +4,7 @@
 // the intake looped on "which country and currency?". Typing always works.
 const $ = (s) => document.querySelector(s);
 const FPS = 3;
-let ws, micCtx, outCtx, playHead = 0, playing = [], camTimer, lastRole = null, lastLine = null;
+let ws, micCtx, micStream, outCtx, playHead = 0, playing = [], camTimer, lastRole = null, lastLine = null;
 
 const MIC_WORKLET = `class Mic extends AudioWorkletProcessor {
   constructor() { super(); this.buf = []; }
@@ -36,6 +36,14 @@ async function startMic(stream) {
     ws.send(tagged(1, pcm.buffer));
   };
   micCtx.createMediaStreamSource(stream).connect(node);
+  micStream = stream;
+}
+
+function stopMic() {  // after the sweep the mic only caught "okay"s and the room's background talk, and the agent answered
+  if (!micCtx) return;
+  micStream?.getAudioTracks().forEach((t) => t.stop());
+  micCtx.close();
+  micCtx = null;
 }
 
 function playPcm(buf) {
@@ -111,8 +119,9 @@ function onMessage(e) {
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function endLocal() {  // stop sending video; keep audio so the agent can read the summary back
+function endLocal() {  // stop sending video and mic; keep the speaker so the agent can read the summary back
   clearInterval(camTimer);
+  stopMic();
   $('#end').disabled = true;
 }
 

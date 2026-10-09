@@ -167,6 +167,10 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
     if past("books"):
         return stop(None)
 
+    # items need only the reads and the geometry: they run alongside books and the checker (the item check is one
+    # vision call of about 15 s that would otherwise add to time to packet)
+    side = ThreadPoolExecutor(1)
+    f_items = side.submit(timed, "items", lambda: items.run(sd, reads, geo)) if go("items") and not past("items") else None
     if go("books"):
         with metrics.stage("books"):
             dump(sd / "books.json", books.run(sd, reads, geo, spines))
@@ -181,9 +185,9 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
     if past("items"):
         return stop(books_out)
 
-    if go("items"):
-        with metrics.stage("items"):
-            dump(sd / "items.json", items.run(sd, reads, geo))
+    if f_items:
+        dump(sd / "items.json", f_items.result())
+    side.shutdown()
     items_out = load(sd / "items.json")
     if past("pricing"):
         return stop(books_out)
@@ -198,7 +202,7 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
 
     with metrics.stage("packet"):
         q = review.queue(geo_json, books_out["books"], items_out["items"], prices["books"], prices["items"],
-                         books_out["stats"])
+                         books_out["stats"], items_out.get("stats"))
         if n := metrics.get("read_failures") + metrics.get("crop_read_failures"):
             q.append({"ref_id": "books", "reason": f"{n} vision-model reads failed (quota or outage): spine claims "
                                                    "and items are missing for those frames and crops"})

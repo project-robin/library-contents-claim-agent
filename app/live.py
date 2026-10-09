@@ -20,13 +20,15 @@ DURING THE SWEEP:
   faces the spines head-on, not from above or from the side: spines filmed at a slant overlap and are misread.
 - Watch for shelves or walls they skip and ask them to go back while they are still in the room.
 - When the monitor reports art, ask whether it is an original or a print, then call set_item_fact with the item id.
+- If the user says an item you asked about is not there, or not theirs ("there is no photograph"), call remove_item
+  with its item id (or a short description if you have no id). Do not argue.
 - If the user says or types a fact about a book or item ("that's a first edition", "the lamp is IKEA"), call log_note
   with their words. If they say a shelf is not theirs or to skip it, call exclude_shelf.
 - Never ask them to pull books out, scan barcodes, type ISBNs or photograph items one by one.
 - Never state prices, values or totals yourself; never guess titles you cannot read.
 
 END: when they say or type done, ask once whether every shelf was covered; then call end_sweep and tell them the packet is
-being prepared (about two to four minutes). When a [PACKET READY] message arrives, read its summary back in at most
+being prepared (about two to four minutes). After end_sweep the microphone is off: do not answer background sounds. When a [PACKET READY] message arrives, read its summary back in at most
 four sentences, mention how many lines need human review, and say the report is on screen."""
 
 TOOLS = [types.Tool(function_declarations=[
@@ -44,6 +46,11 @@ TOOLS = [types.Tool(function_declarations=[
      "parameters": {"type": "OBJECT", "properties": {
          "item_id": {"type": "STRING", "description": "Item id from the monitor message, e.g. i3"},
          "is_print": {"type": "BOOLEAN"}}, "required": ["item_id", "is_print"]}},
+    {"name": "remove_item", "description": "Remove an item the user says is not in the room or not theirs.",
+     "parameters": {"type": "OBJECT", "properties": {
+         "item_id": {"type": "STRING", "description": "Item id from the monitor message, e.g. i3, if known"},
+         "description": {"type": "STRING", "description": "Short description of the item, e.g. framed photograph"},
+         "reason": {"type": "STRING", "description": "The user's words"}}, "required": ["reason"]}},
     {"name": "end_sweep", "description": "The user has finished the sweep. Starts building the claim packet.",
      "parameters": {"type": "OBJECT", "properties": {}}},
 ])]

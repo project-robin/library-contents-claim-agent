@@ -190,3 +190,32 @@ lines say "no retrievable used price" and are left out of the used total, as the
 Typed replies fixed the loudspeaker loop but dropped the brief's "voice in". A "Voice replies (wear headphones)"
 switch before Start streams the mic again (echo cancellation on, half-duplex gate kept); typing always works.
 `sweep.json` records `voice_replies` and the server logs what the user said.
+
+## Live sweep 230330 (bed, voice replies, 2026-10-09)
+
+First sweep with headphones and voice: intake in 13 s (one question, `set_locale` on "Yes"), art answers recorded by
+voice. Packet: 13 lines for 12 books (12/12 titles; one extra line 'Hē kyria me to gati' at 0.83, confidently
+wrong); room 3.10 × 2.86 × 2.48 m, floor 8.87 m² (marker spread 0.5%, metric model agrees within 4.9%; the tester's
+rough "10 × 10 ft" is 9.29 m²). Time to packet **308.8 s**: spines 61, recon 87, geometry 15, OCR 31, books 56,
+checker 3, pricing **145**.
+
+Four fixes from that run:
+1. **Pricing 145 s.** A book with no Indian listing searched India, then US, then GB on Serper's slow tails (108 s),
+   and the 10-book comparison waited for it (38 s). The fallback markets now run in parallel and each comparison
+   starts when its book is priced. Replay of this sweep's pricing from its cache (2 s queries, 24 s tails on the
+   slow book): 105 s → 77 s, same 11 books priced and 10 compared.
+2. **36 item lines for one bedroom.** One bed as 5 lines in 4 categories, the wardrobe 3 times, sockets and switches,
+   and the printed marker card twice as 'art' (the phantom "abstract art" the agent asked about). Now: item boxes
+   showing the ArUco marker are dropped (OpenCV, 12 detections here), and one Gemini call over the item crops may
+   only merge lines or drop marker cards and building fixtures. Code keeps a line the user answered about, keeps
+   the larger kind of object when merging, and never folds bedding, rugs, decor or art into furniture (one run of
+   three had folded bed, bedsheet and pillows into the bedsheet line and lost the bed). An id the answer skips or
+   repeats is kept as it is (on 36 lines one answer did, and the old all-or-nothing rule threw it away).
+   Three runs: 36 → 20, 17, 19 lines; the bed kept as one line every time; items range ₹2.0–5.7 lakh → ₹1.0–3.5 lakh
+   on the first measured run. The items stage now runs alongside books and the checker, so its 10–15 s vision call
+   does not add to time to packet.
+3. **"There is no photograph on the wall."** The agent could only apologise. `remove_item` (by id, or by
+   description when the agent has none) records the removal; the items stage drops the line and the review queue
+   says so.
+4. **The mic stayed on after the sweep** and the agent answered the room's background talk. The phone stops the mic
+   at End sweep; typing still works.
