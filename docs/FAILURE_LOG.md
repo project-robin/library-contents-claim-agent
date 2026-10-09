@@ -123,6 +123,19 @@ spent the Serper key's credits, so the capped pricing is measured once (80 s, no
 Count is still +48 to +105% on the live sweeps: unread boxes and wrong claims on the overlapping stack. The fix that
 remains is a per-spine outline (a decoded SAM mask, or a rotated box) for the crop and the 3D point.
 
+### Voice intake loop on the phone (2026-10-09)
+
+Testers on Chrome for Android: the agent kept asking "which country and currency?". Echo cancellation was off (it
+forces Android's quiet call mode) and the mic was gated while the agent's audio played, plus 0.3 s.
+A fake phone (`echo_loop`: plays the agent's audio back into the mic after a set delay, through the same gate) could
+not reproduce it: no loop at 0, 0.5, 1 or 2 s output delay, at full echo volume, or with the gate removed. A spoken
+"India. Indian rupees" (espeak) was heard and `set_locale` was called, so the harness reached the agent. Untested
+candidates: the phone's own audio path (speaker distortion, room), and a reply clipped by the gate never transcribed,
+so `set_locale` stayed refused (the agent does call it before the reply; the server refuses it, as designed).
+Fix: the phone sends no audio. The agent still speaks; replies are typed and reach Live as `[USER]` turns, which
+unlock `set_locale` at once. 3/3 harness runs: one locale question, `set_locale` accepted, intake moves to the marker.
+The server log now records each agent turn, typed reply and tool call.
+
 ## With two more weeks
 - Android WebXR/ARCore depth and poses as a second metric source (no marker needed).
 - Condition grading per spine feeding the used value.

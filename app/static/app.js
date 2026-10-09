@@ -1,40 +1,16 @@
-// Phone client: mic 16 kHz PCM16 + camera JPEG ~3 fps up; agent audio 24 kHz PCM16 + JSON events down.
-// Binary frames carry a 1-byte tag: 1 = audio, 2 = jpeg.
+// Phone client: camera JPEG ~3 fps + typed replies up; agent audio 24 kHz PCM16 + JSON events down.
+// Binary frames carry a 1-byte tag: 2 = jpeg (1 = agent audio, down only).
+// No mic: on Chrome for Android the agent's loudspeaker voice leaked back into the mic and the intake looped on
+// "which country and currency?". The agent still speaks; the user reads its words and types back.
 const $ = (s) => document.querySelector(s);
 const FPS = 3;
-let ws, micCtx, outCtx, playHead = 0, playing = [], camTimer, lastRole = null, lastLine = null;
-
-const MIC_WORKLET = `class Mic extends AudioWorkletProcessor {
-  constructor() { super(); this.buf = []; }
-  process(inputs) {
-    const ch = inputs[0][0];
-    if (ch) { for (const v of ch) this.buf.push(v);
-      if (this.buf.length >= 1600) { this.port.postMessage(new Float32Array(this.buf)); this.buf = []; } }
-    return true;
-  }
-}
-registerProcessor('mic', Mic);`;
+let ws, outCtx, playHead = 0, playing = [], camTimer, lastRole = null, lastLine = null;
 
 function tagged(tag, payload) {
   const out = new Uint8Array(payload.byteLength + 1);
   out[0] = tag;
   out.set(new Uint8Array(payload), 1);
   return out;
-}
-
-async function startMic(stream) {
-  micCtx = new AudioContext({ sampleRate: 16000 });
-  await micCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([MIC_WORKLET], { type: 'text/javascript' })));
-  const node = new AudioWorkletNode(micCtx, 'mic');
-  node.port.onmessage = (e) => {
-    // ponytail: half-duplex. No echo cancellation (it forces Android's quiet call mode), so the mic is not sent
-    // while the agent speaks or it hears itself; the user can speak once it stops (replies are 1-2 sentences).
-    if (ws.readyState !== 1 || outCtx.currentTime < playHead + 0.3) return;
-    const f = e.data, pcm = new Int16Array(f.length);
-    for (let i = 0; i < f.length; i++) pcm[i] = Math.max(-1, Math.min(1, f[i])) * 0x7fff;
-    ws.send(tagged(1, pcm.buffer));
-  };
-  micCtx.createMediaStreamSource(stream).connect(node);
 }
 
 function playPcm(buf) {
@@ -119,7 +95,7 @@ $('#start').onclick = async () => {
   $('#start').disabled = true;
   outCtx = new AudioContext({ sampleRate: 24000 });
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },  // loudspeaker
+    audio: false,
     video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
   });
   $('#video').srcObject = stream;
@@ -130,10 +106,20 @@ $('#start').onclick = async () => {
   ws.onclose = () => { $('#status').textContent = 'Disconnected.'; endLocal(); };
   ws.onopen = async () => {
     ws.send(JSON.stringify({ type: 'start', device: navigator.userAgent }));
-    await startMic(stream);
     startCamera();
     $('#end').disabled = false;
+    $('#reply').disabled = $('#send').disabled = false;
   };
 };
 
 $('#end').onclick = () => { ws.send(JSON.stringify({ type: 'end' })); endLocal(); };
+
+$('#replyform').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('#reply').value.trim();
+  if (!text || ws?.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'text', text }));
+  lastRole = null;  // a typed reply is its own line
+  say('user', text);
+  $('#reply').value = '';
+};

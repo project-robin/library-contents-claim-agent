@@ -170,12 +170,22 @@ class Session:
                     await self.handle_frame(data)
             elif msg.get("text"):
                 j = json.loads(msg["text"])
-                if j.get("type") == "end":
+                if j.get("type") == "text" and j.get("text", "").strip():
+                    # typed reply: the phone sends no mic audio (Chrome on Android fed the agent's loudspeaker voice
+                    # back to it and the intake looped on 'which country?'). It is the user's answer at once.
+                    self.user_spoke = True
+                    log.info("user typed: %s", j["text"][:200])
+                    if self.live:
+                        try:
+                            await self.live.send_realtime_input(text=f"[USER] {j['text'].strip()}")
+                        except Exception as e:
+                            log.warning("typed reply not delivered: %s", e)
+                elif j.get("type") == "end":
                     await self.monitor("The user pressed End sweep. Tell them the packet is being prepared.", force=True)
                     asyncio.create_task(self.finish())
 
     async def live_loop(self):
-        handle, first = None, True
+        handle, first, agent_said = None, True, ""
         while not self.closed:
             key = vision.key_for(settings.LIVE_MODEL)
             try:
@@ -213,7 +223,11 @@ class Session:
                             if sc.input_transcription and sc.input_transcription.text:
                                 self.user_spoke = True
                                 await self.send_json({"type": "transcript", "role": "user", "text": sc.input_transcription.text})
+                            if sc.turn_complete and agent_said:
+                                log.info("agent said: %s", agent_said[:300])
+                                agent_said = ""
                             if sc.output_transcription and sc.output_transcription.text:
+                                agent_said += sc.output_transcription.text
                                 await self.send_json({"type": "transcript", "role": "agent", "text": sc.output_transcription.text})
             except asyncio.CancelledError:
                 return
@@ -297,6 +311,7 @@ class Session:
     async def tool(self, fc):
         a, name = dict(fc.args or {}), fc.name
         res = {"ok": True}
+        log.info("tool %s %s", name, json.dumps(a)[:200])
         if name == "set_locale":
             cc = str(a.get("country_code", "")).upper()
             if not self.user_spoke:

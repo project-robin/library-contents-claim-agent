@@ -17,6 +17,9 @@
   button { flex:1; padding:12px; font-size:16px; border:0; border-radius:8px; background:#3949ab; color:#fff; }
   button:disabled { opacity:.4; }
   #end { background:#6d4c41; }
+  #replyform { display:flex; gap:8px; padding:0 16px 8px; }
+  #reply { flex:3; padding:12px; font-size:16px; border:0; border-radius:8px; background:var(--card); color:var(--fg); }
+  #send { flex:1; }
   #status { padding:0 16px; color:var(--muted); min-height:1.4em; }
   .panes { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px 16px 24px; }
   .pane { background:var(--card); border-radius:8px; padding:8px; max-height:32vh; overflow:auto; }
@@ -39,6 +42,10 @@
 </div>
 <div id="status">Print the marker card, then tap Start.</div>
 <div id="packet"></div>
+<form id="replyform">
+  <input id="reply" placeholder="Type your answer to the agent (e.g. India, rupees)" autocomplete="off" disabled>
+  <button id="send" disabled>Send</button>
+</form>
 <div class="panes">
   <div class="pane"><h3>Conversation</h3><div id="talk"></div></div>
   <div class="pane"><h3>Inventory (provisional, live)</h3><div id="inv"></div></div>

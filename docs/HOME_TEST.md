@@ -51,14 +51,14 @@ Start only when every line says `ok`. Then start the app (README, "Run a sweep")
 
 ### How the live sweep works
 
-1. You tap **Start sweep**. The Gemini Live agent greets you and asks the country and currency. You answer by voice.
+1. You tap **Start sweep**. The Gemini Live agent greets you and asks the country and currency. You type the answer in the box under the buttons.
 2. The agent asks you to lean the marker against a shelf. Then you walk the room once, slowly.
 3. The phone sends audio and camera frames to the server. The server keeps sharp keyframes and checks blur, glare and
    motion. When a frame is bad, the agent tells you ("slow down", "step closer").
 4. Each keyframe goes to Gemini at once. The inventory list on screen fills in while you walk.
-5. You can correct the agent by voice: "that is a first edition", "skip that shelf, it is not mine".
+5. You can correct the agent by typing: "that is a first edition", "skip that shelf, it is not mine".
 6. When the agent sees art, it asks: "is that an original or a print?"
-7. Say "done". The background stages run: SAM spines, OCR, identification, checker, items, pricing, packet.
+7. Type "done" or tap **End sweep**. The background stages run: SAM spines, OCR, identification, checker, items, pricing, packet.
 8. The agent reads back a short summary. The report link appears on screen.
 
 Sweep order for this test: marker first, then shelf 1 top to bottom, then the table, then each wall, the floor, and

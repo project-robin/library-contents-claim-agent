@@ -2,9 +2,9 @@
 
 ```
  PHONE (Chrome, HTTPS tunnel)                 FASTAPI  app/server.py
- ┌───────────────────────┐   mic PCM16 16k   ┌──────────────────────────────────────────────┐
- │ camera 1920px @3fps   │ ────────────────► │ relay ──► Gemini Live (audio + 1 fps frames)  │
- │ mic                   │   JPEG frames     │           tools: set_locale, log_note,        │
+ ┌───────────────────────┐   typed replies   ┌──────────────────────────────────────────────┐
+ │ camera 1920px @3fps   │ ────────────────► │ relay ──► Gemini Live (text + 1 fps frames)   │
+ │ reply box (no mic)    │   JPEG frames     │           tools: set_locale, log_note,        │
  │ speaker  ◄────────────┼── PCM16 24k ◄──── │           exclude_shelf, set_item_fact,       │
  │ live inventory ◄──────┼── JSON events     │           end_sweep                           │
  └───────────────────────┘                   │ every frame ─► sweeps/<id>/frames + quality   │
