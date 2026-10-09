@@ -103,3 +103,38 @@ def test_price_lookup_failure_leaves_line_unpriced(tmp_path, monkeypatch, fake_d
     p = out["books"]["b_0"]
     assert p["status"] == "identified" and "replacement_cost" not in p
     assert p["reasons"] == ["price lookup failed (HTTPStatusError): not priced"]
+
+
+def test_used_price_from_second_hand_sellers_on_the_same_queries(tmp_path, monkeypatch, fake_drex):
+    """India has no used-book API: second-hand sellers in the same Shopping results give the used price, sourced and
+    dated. A used offer above the new price (a collector listing) is not the used value."""
+    p = pricing.Pricer(tmp_path / "c.json")
+    fake = {"retrieved_at": "2026-10-09T10:00:00+00:00", "results": [
+        {"title": "Ikigai", "source": "Amazon.in", "link": "https://a/1", "price": "₹299"},
+        {"title": "Ikigai", "source": "Kitabay", "link": "https://k/3", "price": "₹170"},
+        {"title": "Ikigai (Used - Good)", "source": "Some Shop", "link": "https://s/4", "price": "₹190"},
+        {"title": "Ikigai", "source": "AbeBooks", "link": "https://ab/5", "price": "₹2,400"}]}
+    calls = []
+    monkeypatch.setattr(p, "shopping", lambda q, gl: calls.append(q) or fake)
+    new = p.book_new("Ikigai", "Hector Garcia", "IN")
+    used = p.book_used("Ikigai", "Hector Garcia", "IN", new)
+    assert new["amount"] == 299  # second-hand offers never set the replacement cost
+    # lower median of 170, 190 (2,400 dropped); with the collector listing it would be 190
+    assert used["amount"] == 170 and used["url"] == "https://k/3" and "Kitabay" in used["source"]
+    assert used["retrieved_at"] == fake["retrieved_at"] and used["condition_assumed"].startswith("used")
+    assert used["listing_title"] == "Ikigai" and not used["converted"]
+
+
+def test_listing_title_must_be_this_book_in_this_language():
+    f = pricing.same_book_title
+    assert not f("The Oath of the Vayuputras", "Flyte By Mark Zug")
+    assert not f("Think Like a Monk", "Think Like a Monk (Kannada)")
+    assert not f("Raavan", "Raavan: Enemy of Aryavarta (Hindi Edition)")
+    assert not f("Ikigai", "Ikigai (इकिगाई)")
+    assert not f("Will Grayson, Will Grayson", "Libro Will Grayson Will Grayson (biblioteca John Green)", "John Green")
+    assert not f("Will Grayson, Will Grayson", "The Essential John Green Collection 4 Books Set", "John Green")
+    assert not f("Tom Gates: Family, Friends and Furry Creatures", "Tom Gates #24: Pesky Pets And Parties", "Liz Pichon")
+    assert f("Ikigai", "Ikigai: The Japanese Secret to a Long and Happy Life")  # a subtitle word, not a language
+    assert f("Othello - William Shakespeare", "William Shakespeare : Othello The Moor Of Venice")
+    assert f("Japonisme: Ikigai, Forest Bathing, Wabi-sabi and More", "Japonisme | Erin Niimi Longhurst",
+             "Erin Niimi Longhurst")  # the listing drops the subtitle

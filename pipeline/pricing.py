@@ -31,11 +31,26 @@ NOT_THE_BOOK = ("kindle", "ebook", "e book", "audiobook", "audio cd", "audible",
                 "combo", "summary of", "study guide", "workbook for", "poster", "bookmark", "t shirt", "mug")
 # Second-hand and import marketplaces that list on Google Shopping. Their offers were being taken as "new" prices
 # (Biblio's ₹492 hardcover over amazon.in's ₹284 paperback) and made re-runs swing up to 25x.
+# They are the used-price pool instead (India has no used-book API).
 USED_SELLERS = ("bookchor", "kitabay", "biblio", "better world books", "abebooks", "thriftbooks", "world of books",
                 "wob", "alibris", "half price books", "awesomebooks", "secondhand", "second hand", "used book",
-                "pre-owned", "preowned", "ebay",
-                "pressreader", "scribd", "kobo", "google play", "audible")  # digital / subscription, not a copy
+                "pre-owned", "preowned", "ebay")
+DIGITAL_SELLERS = ("pressreader", "scribd", "kobo", "google play", "audible")  # subscription / digital, not a copy
 USED_WORDS = (" used ", " pre owned ", " preowned ", " second hand ", " secondhand ", " old book ")
+# A listing in another language is a translation, whatever DREX says (it passed 'Think Like a Monk (Kannada)')
+LANGUAGES = ("hindi", "kannada", "tamil", "telugu", "marathi", "bengali", "bangla", "malayalam", "gujarati", "urdu",
+             "punjabi", "odia", "assamese", "sanskrit", "spanish", "french", "german", "italian", "portuguese",
+             "japanese", "chinese", "korean", "russian", "arabic")
+_LANG = "|".join(LANGUAGES)
+# marked as a language, not a subtitle word ('Ikigai: The Japanese Secret to a Long and Happy Life' is English)
+LANGUAGE_MARK = re.compile(rf"[(\[]\s*(?:{_LANG})\b|\b(?:{_LANG})\s+(?:edition|version|translation)\b|"
+                           rf"\b(?:in|into)\s+(?:{_LANG})\b")
+# Devanagari ... Sinhala, Cyrillic, Arabic, CJK, Hangul: 'Ikigai (इकिगाई)' is the Hindi edition
+OTHER_SCRIPT = re.compile("[\u0400-\u04ff\u0600-\u06ff\u0900-\u0dff\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]")
+STOP = {"the", "and", "for", "with", "from", "book", "books", "novel", "paperback", "hardcover", "edition", "english",
+        "new", "original", "author", "by"}
+FOREIGN_WORDS = {"libro", "livre", "buch", "kniha", "beletrie", "novela"}  # 'Libro Will Grayson Will Grayson'
+SET_WORDS = {"set", "sets", "collection", "combo", "bundle", "lot"}  # 'The Essential John Green Collection 4 Books Set'
 FOREIGN_DOLLAR = ("A$", "C$", "CA$", "AU$", "NZ$", "HK$", "S$", "SG$", "R$", "MX$")
 
 
@@ -59,9 +74,34 @@ def not_the_book(listing_title):
     return any(f" {w} " in t for w in NOT_THE_BOOK)
 
 
+def same_book_title(title, listing_title, author=""):
+    """Most of the title's words appear in the listing, and the listing is not a translation or a set. DREX alone
+    passed 'Flyte By Mark Zug' as a used copy of 'The Oath of the Vayuputras'. A listing may drop the subtitle
+    ('Japonisme | Erin Niimi Longhurst') if nothing but the author is left over; 'Tom Gates #24: Pesky Pets And
+    Parties' for 'Tom Gates: Family, Friends and Furry Creatures' is another book in the series."""
+    t, lt = set(norm(title).split()), set(norm(listing_title).split())
+    if LANGUAGE_MARK.search(listing_title.lower()) and not LANGUAGE_MARK.search(title.lower()):
+        return False
+    if OTHER_SCRIPT.search(listing_title) and not OTHER_SCRIPT.search(title):
+        return False
+    if (lt & FOREIGN_WORDS) - t or (lt & SET_WORDS) - t:
+        return False
+    words = {w for w in t if len(w) >= 3 and w not in STOP}
+    if not words or len(words & lt) >= 0.6 * len(words):
+        return True
+    main = {w for w in norm(re.split(r"[:(\[|]| - ", title)[0]).split() if w not in STOP}
+    rest = {w for w in lt - main - set(norm(author).split()) if len(w) >= 3 and w not in STOP}
+    return bool(main) and main <= lt and len(rest) <= 1
+
+
 def used_listing(retailer, listing_title):
+    """A second-hand copy: excluded from new prices, kept for the used price."""
     r, t = retailer.lower(), f" {norm(listing_title)} "
     return any(s in r for s in USED_SELLERS) or any(w in t for w in USED_WORDS)
+
+
+def digital_listing(retailer):
+    return any(s in retailer.lower() for s in DIGITAL_SELLERS)
 
 
 def lower_median(offers):
@@ -147,13 +187,14 @@ class Pricer:
                 if p.get(f"L{i}", 0) >= settings.LISTING_MATCH_MIN]
 
     # ---- offers ----
-    def book_offers(self, title, author, country):
-        """Union of three queries. Google Shopping returns a different handful of listings on every call; one query
-        left most books on 1-2 matched offers and two fresh runs agreed within 25% on 9/12 books (3 queries: 11/12)."""
+    def listings(self, title, author, country):
+        """Union of three queries, split into new and second-hand listings (unmatched). Google Shopping returns a
+        different handful of listings on every call; one query left most books on 1-2 matched offers and two fresh
+        runs agreed within 25% on 9/12 books (3 queries: 11/12). Cached, so the used price costs no extra query."""
         loc = settings.LOCALES[country]
         first = author.split(",")[0].strip()
         last = first.split()[-1] if first else ""
-        seen, offers, at = set(), [], ""
+        seen, new, used, at = set(), [], [], ""
         qs = [q.strip() for q in (f"{title} {last} book", f"{title} {first} paperback", f"{title} {first}")]
 
         def one(q):  # in parallel: one at a time, a book whose queries each hit a 15-40 s Serper tail took 95 s
@@ -169,12 +210,19 @@ class Pricer:
             at = at or res["retrieved_at"]
             for x in res["results"]:
                 link, lt = x.get("link"), x.get("title", "")
-                if not link or link in seen or not_the_book(lt) or used_listing(x.get("source", ""), lt):
+                seller = x.get("source", "")
+                if not link or link in seen or not_the_book(lt) or digital_listing(seller):
                     continue
                 if (a := parse_price(x.get("price"), loc["symbols"])):
                     seen.add(link)
-                    offers.append({"amount": a, "retailer": x.get("source", ""), "url": link, "title": lt})
-        return self.matching({"title": title, "author": author}, offers, BOOK_NEW_Q), at
+                    o = {"amount": a, "retailer": seller, "url": link, "title": lt}
+                    (used if used_listing(seller, lt) else new).append(o)
+        return new, used, at
+
+    def book_offers(self, title, author, country):
+        new, _, at = self.listings(title, author, country)
+        new = [o for o in new if same_book_title(title, o["title"], author)]
+        return self.matching({"title": title, "author": author}, new, BOOK_NEW_Q), at
 
     def convert(self, amount, base, to):
         if base == to:
@@ -204,20 +252,39 @@ class Pricer:
                                            "fx": fx}}
         return None
 
-    def book_used(self, title, author, country):
+    def book_used(self, title, author, country, new=None):
+        """Second-hand sellers on local Google Shopping first, then eBay when keys are set. A used offer above the
+        new price is a collector or import listing, not what an ordinary used copy fetches: dropped."""
         loc = settings.LOCALES[country]
+        _, raw, at = self.listings(title, author, country)
+        raw = [o for o in raw if same_book_title(title, o["title"], author)]
+        # DREX sees the seller: a listing title alone does not say whether the copy is used
+        offers = self.matching({"title": title, "author": author},
+                               [o | {"listing": o["title"], "title": f"{o['title']} (sold by {o['retailer']}, second-hand seller)"}
+                                for o in raw],
+                               BOOK_USED_Q)
+        offers = [o for o in offers if not new or o["amount"] <= new["amount"]]
+        if offers:
+            o = lower_median(offers)
+            return {"amount": o["amount"], "source": f"Google Shopping via Serper: {o['retailer']} (second-hand seller)",
+                    "url": o["url"], "retrieved_at": at,
+                    "condition_assumed": f"used, as listed by a second-hand seller (median of {len(offers)} matching "
+                                         "used listings)",
+                    "converted": False, "listing_title": o["listing"]}
         market = loc["ebay"] or settings.USED_FALLBACK_MARKET
         last = author.split(",")[0].split()[-1] if author else ""
         res = self.ebay_used(f"{title} {last}".strip(), market)
         offers = [{"amount": float(x["price"]["value"]), "currency": x["price"]["currency"],
                    "url": x.get("itemWebUrl", ""), "title": x.get("title", ""), "condition": x.get("condition", "")}
                   for x in res["results"] if x.get("price") and x.get("itemWebUrl")
-                  and not not_the_book(x.get("title", ""))]
+                  and not not_the_book(x.get("title", "")) and same_book_title(title, x.get("title", ""), author)]
         offers = self.matching({"title": title, "author": author}, offers, BOOK_USED_Q)
         if not offers:
             return None
         o = lower_median(offers)
         amt, fx = self.convert(o["amount"], o["currency"], loc["currency"])
+        if new and amt > new["amount"]:
+            return None
         out = {"amount": amt, "source": f"eBay {market} used fixed-price listings", "url": o["url"],
                "retrieved_at": res["retrieved_at"], "condition_assumed": f"used, {o['condition'] or 'as listed'} "
                f"(median of {len(offers)} matching used listings)", "converted": fx is not None,
@@ -274,7 +341,8 @@ def run(sweep_dir, books, items, country):
                 p["status"] = "unidentified"
             else:
                 try:
-                    new, used = pr.book_new(b["title"], b["author"], country), pr.book_used(b["title"], b["author"], country)
+                    new = pr.book_new(b["title"], b["author"], country)
+                    used = pr.book_used(b["title"], b["author"], country, new)
                 except httpx.HTTPError as e:  # Serper 504s outlast the retries: an unpriced line, not a dead packet
                     metrics.count("price_failures")
                     p["reasons"].append(f"price lookup failed ({type(e).__name__}): not priced")
