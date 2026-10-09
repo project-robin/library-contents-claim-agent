@@ -1,0 +1,6 @@
+measure,value,notes
+length_m,3.048,"10 ft, stated by the house's builder; not tape-measured (tester in quarantine, no tape)"
+width_m,3.048,"10 ft, stated by the house's builder; not tape-measured"
+height_m,3.048,"10 ft, stated by the house's builder; not tape-measured"
+floor_area_m2,9.29,"10 x 10 ft from the builder"
+wall_area_m2,37.16,"gross: perimeter 12.19 m x height 3.048 m, from the builder's figures"
