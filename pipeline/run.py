@@ -203,7 +203,8 @@ def run(sd, start="keyframes", recompute_keyframes=False, log=print, skip=(), un
             q.append({"ref_id": "books", "reason": f"{n} vision-model reads failed (quota or outage): spine claims "
                                                    "and items are missing for those frames and crops"})
         extra = {"keyframes": len(kfs)}
-        if sweep.get("t_end_epoch"):
+        # live only: a rerun hours later would report the hours since filming as time to packet
+        if sweep.get("t_end_epoch") and not (sd / "claim_packet.json").exists():
             extra["time_to_packet_s"] = round(time.time() - sweep["t_end_epoch"], 1)
         m = metrics.save(sd / "metrics.json", extra)
         p = packet.build(sweep, geo_json, books_out, items_out, prices, q, m)

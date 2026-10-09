@@ -4,7 +4,7 @@
  PHONE (Chrome, HTTPS tunnel)                 FASTAPI  app/server.py
  ┌───────────────────────┐   typed replies   ┌──────────────────────────────────────────────┐
  │ camera 1920px @3fps   │ ────────────────► │ relay ──► Gemini Live (text + 1 fps frames)   │
- │ reply box (no mic)    │   JPEG frames     │           tools: set_locale, log_note,        │
+ │ reply box / mic*      │   JPEG frames     │           tools: set_locale, log_note,        │
  │ speaker  ◄────────────┼── PCM16 24k ◄──── │           exclude_shelf, set_item_fact,       │
  │ live inventory ◄──────┼── JSON events     │           end_sweep                           │
  └───────────────────────┘                   │ every frame ─► sweeps/<id>/frames + quality   │
@@ -23,6 +23,12 @@
  books, per spine:  SAM box ─► crop ─► PP-OCRv5 words (Modal CPU) ─┬─► claim confirmed / vetoed by its own words
                     Gemini spine with IoU ≥ 0.3 = reader claim ────┘   no claim / vetoed: OCR fragments ─► catalogue ─► DREX
                     still unidentified ─► Gemini crop reader (its OCR words must agree; none readable: capped, review)
+
+ books, per room:   detections ─► 3D clusters ─► merge (related titles ≤ 15 cm) ─► same_book (one catalogue work,
+                    one place) ─► frame_cap (unread lines ≤ spines seen in one full view) ─► reconcile (one Gemini
+                    call per shelf unit: which lines are one physical book; may only group or drop)
+
+ * mic only with "Voice replies (wear headphones)"; on the loudspeaker the agent heard itself, so replies are typed
 ```
 
 ## How a spine is found and named
@@ -30,7 +36,7 @@
 Spines come from **SAM 3.1** (Meta API, prompt `book spine`), one image call per keyframe. SAM's video mode tracks at
 most 16 objects per frame, fewer than one shelf holds, so the pipeline uses image mode and links spines across frames
 itself (3D clustering below). SAM gives one tight box per spine. Gemini's boxes drift onto the neighbouring spine, so a
-crop cut from them can show the wrong book: that capped the earlier OCR-on-Gemini-boxes design (FAILURE_LOG #3).
+crop cut from them can show the wrong book: that capped the earlier OCR-on-Gemini-boxes design (FAILURE_LOG #2).
 
 Each spine's identity must come from evidence on **its own crop**:
 1. **OCR witness.** PP-OCRv5 reads the crop at 90° and 270° (and 0° when the crop is wider than tall). A detector +
@@ -48,6 +54,19 @@ Each spine's identity must come from evidence on **its own crop**:
 
 `id_source` in each book line records which path named it: `spine_read`, `ocr_fragments` or `crop_reader`.
 
+## How a book is counted once
+
+A phone sweep sees each book in 5–25 frames, and on a slanted stack SAM's axis-aligned boxes overlap (76–79% of
+boxes on live sweeps vs 4–12% on photos). Detections are clustered in 3D, then four steps remove repeats, each
+writing its count to `books.json` stats and its actions to the review queue:
+1. **merge**: clusters with related titles ('RAAVAN' / 'RAAVAN: ENEMY OF ARYAVARTA') within 15 cm.
+2. **same_book**: lines resolved to one catalogue work within 15 cm and half a spine height (volume numbers must
+   agree); unread pieces inside a spine are folded into it; unread boxes under 10 cm are not books.
+3. **frame_cap**: a unit's unread lines are capped at the spines Gemini counted in one frame showing all of it.
+4. **reconcile**: one Gemini call per shelf unit, with its two fullest frames and every line's crop, OCR and title,
+   says which lines are one physical book. Guardrails: it can only group or drop; two different confident titles
+   are never merged; a confident line is never dropped; an answer that does not list every line once is ignored.
+
 **Fallbacks.** `SPINE_SOURCE=gemini`, a missing `META_API_KEY` or a SAM failure falls back to Gemini's spine boxes,
 with the review note "spines from vision model". Still photos have no geometry: each detection is its own book and
 shelf/position come from box order (rows by vertical overlap, top to bottom, then left to right).
@@ -60,7 +79,8 @@ daily quota spent) is verdict `unsure`. Each sends lines to review instead of ki
 
 | Stage | Model / method | Output |
 |---|---|---|
-| Conversation, directing the sweep, voice corrections | Gemini Live (native audio) | tool calls → `notes.jsonl` |
+| Conversation, directing the sweep, corrections | Gemini Live (native audio out; typed replies, or voice with headphones) | tool calls → `notes.jsonl` |
+| Which lines are one physical book | Gemini (`VISION_MODEL`) on a shelf unit's frames and crops; may only group or drop | `books.json` stats `reconciled` |
 | Blur, glare, motion | OpenCV (Laplacian variance, saturated pixels, frame difference) | nudges into the Live session |
 | Spine boxes (one per spine) | SAM 3.1 via the Meta API, image mode, prompt `book spine` | `spines/*.json` |
 | Printed words on each spine crop | PP-OCRv5 server (PaddleOCR 3.7.0, paddlepaddle 3.2.0), Modal CPU app `library-claim-ocr` | `ocr.json` |
@@ -102,9 +122,9 @@ Using the scaled point cloud:
 
 | Figure | Source | Rule |
 |---|---|---|
-| Book replacement | Google Shopping (Serper, `gl` = country) | DREX P(listing is a new copy of this book) ≥ 0.8; ebook/Kindle/sets rejected; lower-median offer; URL + retrieval time kept |
+| Book replacement | Google Shopping (Serper, `gl` = country) | title words must match, no other language or script, no sets; then DREX P(listing is a new copy of this book) ≥ 0.8; ebook/Kindle rejected; lower-median offer; URL + retrieval time kept |
 | Book replacement, no local offer | US, then GB shopping + Frankfurter FX | `converted: true`, original amount and FX date kept |
-| Book used | eBay Browse API, USED + fixed price, books category | lower-median matched listing; converted when it is a foreign market |
+| Book used | Second-hand sellers (Bookchor, Kitabay, AbeBooks, eBay…) in the same Google Shopping results; else eBay Browse API (used, fixed price) | DREX P ≥ 0.8 with the seller named; not above the new price; lower-median offer; converted when it is a foreign market |
 | Item with legible brand/model | Google Shopping | `priced` |
 | Item without brand | Google Shopping, generic query | `range` = interquartile range of the listings |
 | Art | none | `needs_appraisal` unless the user says it is a print |

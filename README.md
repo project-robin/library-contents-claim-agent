@@ -6,7 +6,7 @@ output is a `claim_packet.json` plus an HTML report. Every number traces back to
 
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Results against ground truth: [docs/RESULTS.md](docs/RESULTS.md)
-- Failure log: [docs/FAILURE_LOG.md](docs/FAILURE_LOG.md)
+- Failure log: [docs/FAILURE_LOG.md](docs/FAILURE_LOG.md) (one page; the full history is [docs/DEV_LOG.md](docs/DEV_LOG.md))
 - Reference app (kept / changed / thrown away): [docs/REFERENCE_NOTES.md](docs/REFERENCE_NOTES.md)
 
 ## Setup (about 10 minutes)
@@ -41,9 +41,9 @@ uv run uvicorn app.server:app --host 0.0.0.0 --port 8000
 docker run --rm --network host cloudflare/cloudflared tunnel --url http://localhost:8000
 ```
 
-Open the printed `https://….trycloudflare.com` URL in Chrome on the phone and tap **Start sweep**. The agent
-asks your country (type the answer in the box under the buttons), then asks you to lean the marker against a shelf and
-walk the room once. Type "done" or tap **End sweep**. The report link appears when the packet is ready, and everything is saved under `sweeps/<id>/`.
+Open the printed `https://….trycloudflare.com` URL in Chrome on the phone and tap **Start sweep** (tick **Voice
+replies** first if you wear headphones). The agent asks your country (say it, or type it in the box under the buttons), then asks you to lean the marker against a shelf and
+walk the room once. Say or type "done", or tap **End sweep**. The report link appears when the packet is ready, and everything is saved under `sweeps/<id>/`.
 
 ## Rerun or score offline
 
@@ -68,7 +68,7 @@ uv run pytest                                             # offline tests incl. 
 | Metric scale | Printed ArUco marker (OpenCV), with a cross-check against standard book formats |
 | Book identity | Google Books API, Open Library |
 | New prices | Google Shopping via Serper.dev (per-country `gl`) |
-| Used prices | eBay Browse API (used, fixed price) |
+| Used prices | Second-hand sellers in the same Google Shopping results; eBay Browse API when keys are set |
 | FX | Frankfurter (ECB reference rates) |
 | Backend/UI | FastAPI, one HTML page, plain JS |
 | Coding | Built with Claude Code (AI pair programmer) |
@@ -79,16 +79,19 @@ No model is trained or fine-tuned. No catalogue, price list or room dimensions a
 
 - **Wall area** is gross (perimeter × height). Doors and windows are not subtracted.
 - **Replacement cost** is the lower-median matched new listing in the local market (a real offer, not an average).
-- **Used value** is the lower-median matched used listing. India has no used-book API, so Indian used prices are
-  converted from eBay US and labelled `converted`.
+- **Used value** is the lower-median matched listing from a second-hand seller (Bookchor, Kitabay, AbeBooks, eBay…)
+  in the local Google Shopping results, never above the new price. With eBay keys, eBay is the fallback (converted
+  and labelled when it is another market). A book with no second-hand listing has no used value and is left out of
+  the used total.
 - **`excluded_from_totals`** counts lines (books + items) that add nothing to replacement totals: no sourced price,
   unidentified, or needs appraisal.
 - **Appraisal triggers**: visible or stated signed / first edition / limited / leather / gilt / old binding, or a
   retrieved price above the threshold (₹5,000 / $75 / £60). These lines are not priced. Publication year alone is
   not a trigger, because the catalogue year belongs to the work, not the copy.
-- **The agent speaks; the user types.** Testers on Chrome for Android saw the intake loop on "which country and
-  currency?" with the loudspeaker on (echo cancellation forces the quiet call mode, so it was off). The phone sends
-  no audio: the agent's words show on screen and play on the loudspeaker, and replies, corrections ("that is a first
-  edition") and "done" are typed. A typed reply reaches Gemini Live as a `[USER]` text turn.
+- **Voice replies need headphones.** Testers on Chrome for Android saw the intake loop on "which country and
+  currency?" with the loudspeaker on (echo cancellation forces the quiet call mode, so it was off). With **Voice
+  replies** ticked the phone streams the mic (echo cancellation on); otherwise it sends no audio and replies,
+  corrections ("that is a first edition") and "done" are typed. The agent always speaks and its words show on
+  screen. A typed reply reaches Gemini Live as a `[USER]` text turn.
 - **Shelf** = unit letter + row from the top (`B-3`). **Position** counts along the shelf.
 - **Shelved wall area** = sum of the front faces (width × height) of the detected shelving units.

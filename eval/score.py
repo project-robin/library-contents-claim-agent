@@ -10,9 +10,16 @@ import json
 import statistics
 from pathlib import Path
 
-from pipeline.books import sim
+from pipeline.books import related, sim
 
 TITLE_MATCH = 0.85
+
+
+def tsim(a, b):
+    """1.0 when one title starts or ends the other ('Othello' / 'Othello - William Shakespeare', 'Raavan' / 'Raavan:
+    Enemy of Aryavarta'): the packet appends an author or drops a subtitle. Otherwise string similarity. A title
+    inside a longer one ('Ikigai' in 'Japonisme: Ikigai, ...') still does not match."""
+    return 1.0 if related(a, b) else sim(a, b)
 
 
 def rows(p):
@@ -21,7 +28,7 @@ def rows(p):
 
 def match_titles(gt_titles, packet_books):
     """Greedy one-to-one match on title similarity. Returns {gt_index: book}."""
-    pairs = sorted(((sim(g, b["title"]), gi, bi) for gi, g in enumerate(gt_titles)
+    pairs = sorted(((tsim(g, b["title"]), gi, bi) for gi, g in enumerate(gt_titles)
                     for bi, b in enumerate(packet_books) if b["title"]), reverse=True)
     used_g, used_b, out = set(), set(), {}
     for s, gi, bi in pairs:
@@ -57,7 +64,7 @@ def score(packet, gt):
         recall = len(m) / len(legible) * 100
         all_gt = [b["title"] for b in gt_books if b["title"]]
         confident = [b for b in books if b["title"] and b["id_confidence"] >= 0.75]
-        wrong = [b for b in confident if max((sim(b["title"], g) for g in all_gt), default=0) < TITLE_MATCH]
+        wrong = [b for b in confident if max((tsim(b["title"], g) for g in all_gt), default=0) < TITLE_MATCH]
         wrong_pct = len(wrong) / max(len(confident), 1) * 100
         add("Title identification", ">=70% correct, <=3% confidently wrong",
             f"{recall:.1f}% correct ({len(m)}/{len(legible)}), {wrong_pct:.1f}% confidently wrong ({len(wrong)}/{len(confident)})",
