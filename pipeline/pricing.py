@@ -238,10 +238,22 @@ class Pricer:
             return {"amount": o["amount"], "source": f"Google Shopping via Serper: {o['retailer']}", "url": o["url"],
                     "retrieved_at": at, "converted": False, "offers_considered": len(offers),
                     "listing_title": o["title"]}
-        for other in ("US", "GB"):
-            if other == country:
+        # both fallback markets at once, US preferred: one after the other, a book with no local listing held a live
+        # sweep's pricing for 108 s on Serper's slow tails
+        def offers_in(other):
+            try:
+                return self.book_offers(title, author, other)
+            except httpx.HTTPError as e:
+                return e
+        others = [o for o in ("US", "GB") if o != country]
+        with ThreadPoolExecutor(len(others)) as ex:
+            got = list(ex.map(offers_in, others))
+        if all(isinstance(g, Exception) for g in got):
+            raise got[0]
+        for other, res in zip(others, got):
+            if isinstance(res, Exception):
                 continue
-            offers, at = self.book_offers(title, author, other)
+            offers, at = res
             if offers:
                 o = lower_median(offers)
                 amt, fx = self.convert(o["amount"], settings.LOCALES[other]["currency"], loc["currency"])
@@ -378,21 +390,30 @@ def run(sweep_dir, books, items, country):
 
         other = settings.COMPARISON_COUNTRY if settings.COMPARISON_COUNTRY != country else "GB"
 
-        def compare(b):
+        def compare(b, local):
             try:
-                return {"id": b["id"], "title": b["title"], country: out_books[b["id"]]["replacement_cost"],
+                return {"id": b["id"], "title": b["title"], country: local,
                         other: pr.book_new(b["title"], b["author"], other)}
             except httpx.HTTPError:
                 metrics.count("price_failures")
 
-        # one pool for all lookups (Serper: 1-3 s typical, 15-45 s tails and rare 500s; overlap them). Items and the
-        # locale comparison ran one at a time after the books: about a minute of a sweep
+        # one pool for all lookups (Serper: 1-3 s typical, 15-45 s tails and rare 500s; overlap them). The locale
+        # comparison starts as each book is priced (the first 10 to finish): started after the slowest book, it added
+        # 38 s to a live sweep's 145 s of pricing
         todo = [b for b in books if not b["excluded"]]
+        compared, slot = [], threading.Lock()
         with ThreadPoolExecutor(16) as ex:
+            def price_then_compare(b):
+                p = price_book(b)
+                if p.get("replacement_cost"):
+                    with slot:
+                        if len(compared) < 10:
+                            compared.append(ex.submit(compare, b, p["replacement_cost"]))
+                return p
             item_prices = ex.map(price_item, items)  # submitted now, runs alongside the books
-            out_books.update(zip((b["id"] for b in todo), ex.map(price_book, todo)))
-            priced = [b for b in books if out_books.get(b["id"], {}).get("replacement_cost")][:10]
-            comparison = [c for c in ex.map(compare, priced) if c]
+            out_books.update(zip((b["id"] for b in todo), ex.map(price_then_compare, todo)))
+            order = {b["id"]: i for i, b in enumerate(books)}
+            comparison = sorted((c for c in (f.result() for f in compared) if c), key=lambda c: order[c["id"]])
             out_items.update(zip((it["id"] for it in items), item_prices))
     finally:
         pr.save()
