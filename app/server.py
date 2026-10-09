@@ -140,10 +140,10 @@ class Session:
         loc = settings.LOCALES[settings.DEFAULT_COUNTRY]
         (self.dir / "sweep.json").write_text(json.dumps({
             "id": self.id, "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "device": start.get("device", ""), "country": settings.DEFAULT_COUNTRY, "currency": loc["currency"]}))
+            "device": start.get("device", ""), "voice_replies": bool(start.get("voice")), "country": settings.DEFAULT_COUNTRY, "currency": loc["currency"]}))
         self.frames_log = open(self.dir / "frames.jsonl", "a")
         await self.send_json({"type": "sweep", "id": self.id})
-        log.info("sweep %s started", self.id)
+        log.info("sweep %s started (voice replies: %s)", self.id, bool(start.get("voice")))
         tasks = [asyncio.create_task(self.live_loop()), asyncio.create_task(asyncio.to_thread(warm_modal)),
                  asyncio.create_task(asyncio.to_thread(warm_ocr))]
         try:
@@ -184,8 +184,8 @@ class Session:
             elif msg.get("text"):
                 j = json.loads(msg["text"])
                 if j.get("type") == "text" and j.get("text", "").strip():
-                    # typed reply: the phone sends no mic audio (Chrome on Android fed the agent's loudspeaker voice
-                    # back to it and the intake looped on 'which country?'). It is the user's answer at once.
+                    # typed reply (the mic is opt-in, for headphones: Chrome on Android fed the agent's loudspeaker
+                    # voice back to it and the intake looped on 'which country?'). It is the user's answer at once.
                     self.user_spoke = True
                     log.info("user typed: %s", j["text"][:200])
                     if self.live:
@@ -235,6 +235,7 @@ class Session:
                                 await self.send_json({"type": "interrupted"})
                             if sc.input_transcription and sc.input_transcription.text:
                                 self.user_spoke = True
+                                log.info("user said: %s", sc.input_transcription.text[:200])
                                 await self.send_json({"type": "transcript", "role": "user", "text": sc.input_transcription.text})
                             if sc.turn_complete and agent_said:
                                 log.info("agent said: %s", agent_said[:300])
