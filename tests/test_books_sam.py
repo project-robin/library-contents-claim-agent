@@ -282,3 +282,25 @@ def test_frame_cap_drops_only_unread_lines_above_one_full_view():
     assert n == 2 and [b["id"] for b in kept] == ["b0", "b1", "b2", "b3", "b4", "b7"]  # b7 has a weak candidate
     clusters = [{"id": b["id"], "members": [{"frame": f"f{i}"}]} for i, b in enumerate(known + [weak] + unread)]
     assert books.frame_cap(known + [weak] + unread, clusters, reads)[1] == 0  # no frame shows the unit
+
+
+def test_reconcile_guardrails():
+    """The reconcile model only groups or drops existing lines: two confident titles stay two books, a confident
+    line is never dropped, 'unsure' keeps the line, and an answer that does not list every entry once is ignored."""
+    from pipeline import reconcile
+    def line(i, title, conf, views=5):
+        return {"id": f"b{i}", "title": title, "id_confidence": conf, "views": views, "excluded": ""}
+    unit = [line(0, "Think Like a Monk", 0.99, 30), line(1, "", 0.0, 4), line(2, "Ikigai", 0.99), line(3, "", 0.0),
+            line(4, "Sita", 0.98), line(5, "", 0.0)]
+    A = reconcile.Answer
+    ans = A(books=[reconcile.Book(entries=[0, 1, 2], reason="top half of Monk; Ikigai beside it"),
+                   reconcile.Book(entries=[4], reason="")],
+            not_books=[reconcile.Drop(entry=3, kind="not_a_book", reason="a box"),
+                       reconcile.Drop(entry=5, kind="unsure", reason="?")])
+    kept, acts = reconcile.apply(unit, ans)
+    assert [b["id"] for b in kept] == ["b0", "b2", "b4", "b5"]
+    assert unit[0]["views"] == 34 and [a[:3] for a in acts] == [("b1", "merged", "b0"), ("b3", "not_a_book", "")]
+    strong_drop = A(books=[reconcile.Book(entries=[0, 1, 2, 3, 5], reason="")],
+                    not_books=[reconcile.Drop(entry=4, kind="not_a_book", reason="")])
+    assert "b4" in [b["id"] for b in reconcile.apply([dict(b) for b in unit], strong_drop)[0]]
+    assert reconcile.apply(unit, A(books=[reconcile.Book(entries=[0, 1], reason="")], not_books=[])) is None

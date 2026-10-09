@@ -272,6 +272,12 @@ def same_book(books):
     return [b for b in books if id(b) in keep], folded, fragments
 
 
+def book_frames(books, clusters):
+    """{line id: frames its detections came from}, including lines same_book() folded into it."""
+    by_id = {c["id"]: {m["frame"] for m in c["members"]} for c in clusters}
+    return {b["id"]: set().union(*(by_id.get(i, set()) for i in [b["id"], *b.get("_merged", [])])) for b in books}
+
+
 def frame_cap(books, clusters, reads):
     """The most books a unit can hold, when the whole unit fits in one view: Gemini read a photo of 12 books on a bed
     as 12 spines (in 5 frames), while the 3D clusters still held unread pieces. A frame shows a unit when it holds
@@ -280,8 +286,7 @@ def frame_cap(books, clusters, reads):
     the cap, unread lines (weakest candidate, fewest views first) are dropped; any line with a title stays: on sweep
     203017 dropping low-confidence titles too removed real books (21 -> 14). A long shelf
     never fits one frame and keeps every line. Returns (kept, dropped)."""
-    by_id = {c["id"]: {m["frame"] for m in c["members"]} for c in clusters}
-    members = {b["id"]: set().union(*(by_id.get(i, set()) for i in [b["id"], *b.get("_merged", [])])) for b in books}
+    members = book_frames(books, clusters)
     weak = lambda b: b["id_confidence"] < settings.CONF_IDENTIFIED
     unread = lambda b: not b["title"]  # a real book read at low confidence (0.5) is never dropped, only unread lines
     drop = set()
@@ -680,12 +685,15 @@ def run(sweep_dir, reads, geo, spines=None):
     cache_p.write_text(json.dumps(cache))
     books, folded, fragments = same_book(books) if geo.ok and with_3d else (books, 0, 0)
     books, over_cap = frame_cap(books, clusters, reads) if geo.ok and with_3d and spines is not None else (books, 0)
+    from pipeline import reconcile  # imports vision
+    books, rec = reconcile.run(sweep_dir, books, book_frames(books, clusters)) if geo.ok and with_3d else (books, [])
     kept = [b for b in books if not b["excluded"]]
     stats = {"detections": len(dets), "detections_without_3d": len(dets) - len(with_3d),
              "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept),
              "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched,
              "seen_once_dropped": len(dropped), "same_book_folded": folded,
-             "partial_boxes_dropped": fragments, "over_frame_cap_dropped": over_cap}
+             "partial_boxes_dropped": fragments, "over_frame_cap_dropped": over_cap,
+             "reconciled": [{"id": i, "action": k, "into": into, "reason": r} for i, k, into, r in rec]}
     if not geo.ok:
         stats["warning"] = "no metric geometry: books could not be deduplicated or measured"
     return {"books": books, "stats": stats}

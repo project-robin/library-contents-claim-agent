@@ -136,6 +136,27 @@ Fix: the phone sends no audio. The agent still speaks; replies are typed and rea
 unlock `set_locale` at once. 3/3 harness runs: one locale question, `set_locale` accepted, intake moves to the marker.
 The server log now records each agent turn, typed reply and tool call.
 
+### Reconcile check: one vision call per shelf unit (2026-10-09)
+
+After the 3D merge rules, the bed of 12 books still came out as 14-19 lines: unread slices of spines and second
+views of a book on a slanted stack, whose boxes overlap and share one centre. `pipeline/reconcile.py` sends the
+unit's two fullest frames plus every line's crop, OCR text and claimed title to Gemini and asks which lines are one
+physical book. It may only group or drop existing lines; two confident titles are never merged and a confident line
+is never dropped; an answer that does not list every line once is ignored; each action goes to the review queue.
+
+Same input, before -> after (books stage rerun, two runs each):
+
+| Sweep | Truth | Run 1 | Run 2 | Correct titles |
+|---|---|---|---|---|
+| 194203 (bed) | 12 | 14 -> 12 | 14 -> 12 | 12/12, 12/12 |
+| 183215 (bed) | 12 | 18 -> 13 | 18 -> 17 | 12/12, 12/12 |
+| 184524 (bed) | 12 | 19 -> 13 | 19 -> 13 | 12/12, 12/12 |
+| 203017 (shelf + stack) | 21 | 22 -> 19 | 22 -> 20 | 16, 16 |
+
+No correct title lost, no confident wrong title added. The answer varies between runs (183215: 13 vs 17). On a
+synthetic room of blank rendered spines, the model first dropped 20 of 30 as "not a book"; the prompt now says a
+covered or unreadable spine is still a book, since the brief's covered test book must be counted.
+
 ## With two more weeks
 - Android WebXR/ARCore depth and poses as a second metric source (no marker needed).
 - Condition grading per spine feeding the used value.

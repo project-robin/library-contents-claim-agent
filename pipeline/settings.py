@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     # allows 15 calls a minute, so reading all of them queued ~2 min of reads behind the packet. SAM boxes and OCR
     # cover every keyframe; a book shows in 5-25 of them. Reading every 3rd: 17/21 titles vs 15/21 reading all
     READ_GAP_S: float = Field(3.0, ge=0)
+    RECONCILE: bool = True  # one vision call per shelf unit groups lines that are one physical book (pipeline/reconcile.py)
 
     # Decisions (DREX calibrated probabilities)
     CONF_IDENTIFIED: float = Field(0.75, ge=0, le=1)

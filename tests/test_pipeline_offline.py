@@ -90,6 +90,7 @@ def make_sweep(sd):
 
 
 def stub_apis(monkeypatch):
+    monkeypatch.setattr(settings, "RECONCILE", False)  # a network call; its rules are tested on their own
     monkeypatch.setattr(vision, "read_crops", lambda js: [{"title": "", "author": "", "publisher": "",
                                                            "legibility": "none"} for _ in js])
     monkeypatch.setattr(vision, "check_identities", lambda cs: [{"verdict": "match", "reason": "stub"} for _ in cs])

@@ -52,6 +52,10 @@ def queue(geometry, books, items, book_prices, item_prices, book_stats):
     if book_stats.get("over_frame_cap_dropped"):
         add("books", f"{book_stats['over_frame_cap_dropped']} unread spine lines not counted: the unit "
                      "showed fewer spines in one full view than the 3D count")
+    for r in book_stats.get("reconciled", []):
+        add(r["into"] or "books", f"line {r['id']} " + (f"merged into {r['into']}" if r["into"] else
+                                                         f"not counted ({r['action'].replace('_', ' ')})")
+            + f" by the reconcile check: {r['reason']}")
     if "warning" in book_stats:
         add("books", book_stats["warning"])
     if book_stats.get("spine_source") == "vision":
