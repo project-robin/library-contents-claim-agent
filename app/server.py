@@ -4,6 +4,7 @@ Run:  uv run uvicorn app.server:app --host 0.0.0.0 --port 8000
 """
 import asyncio
 import json
+import re
 import logging
 import time
 import uuid
@@ -64,6 +65,17 @@ def warm_ocr():
         log.warning("ocr warm-up failed: %s", e)
 
 
+ART_GAP_S = 20  # at most one "original or print?" question per this many seconds
+ART_WORDS = {"art", "artwork", "painting", "poster", "canvas", "print", "framed", "frame", "picture", "photo",
+             "photograph", "wall", "panel", "above", "small", "large", "hanging", "leaning", "against"}
+
+
+def art_key(desc):
+    """Distinctive words of an art description ('Spider-Man headboard painting' -> {'spiderman', 'headboard'}):
+    two descriptions sharing one are the same piece seen again."""
+    return {w for w in re.sub(r"[^a-z ]", "", desc.lower()).split() if len(w) >= 4 and w not in ART_WORDS}
+
+
 class Session:
     def __init__(self, ws):
         self.ws, self.lock = ws, asyncio.Lock()
@@ -76,6 +88,7 @@ class Session:
         self.read_sem, self.read_tasks = asyncio.Semaphore(settings.LIVE_READ_CONCURRENCY), set()
         self.books, self.items, self.unreadable_now = {}, [], 0
         self.last_item_t = {}
+        self.art_asked, self.last_art_t = [], -1e9
         self.user_spoke = False  # set_locale needs a user answer: on a silent replay the agent set IN by itself
 
     # ---------- plumbing ----------
@@ -297,6 +310,13 @@ class Session:
         for k, it in enumerate(r["items"]):
             if t - self.last_item_t.get(it["category"], -99) < 3:  # ponytail: provisional live dedup only
                 continue
+            if it["category"] == "art":
+                key = art_key(it["description"])
+                # every frame read re-detected the Spider-Man art as a new item, and the agent asked 9 times
+                if any(key & seen for seen in self.art_asked) or t - self.last_art_t < ART_GAP_S:
+                    continue
+                self.art_asked.append(key)
+                self.last_art_t = t
             self.last_item_t[it["category"]] = t
             iid = f"i{len(self.items) + 1}"
             self.items.append({"id": iid, "category": it["category"], "description": it["description"],
