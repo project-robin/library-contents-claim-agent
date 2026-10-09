@@ -436,9 +436,10 @@ def _openlibrary(title, author):
     fields = "title,subtitle,author_name,publisher,first_publish_year,isbn,key"
     params = {"title": title, "limit": 5, "fields": fields} | ({"author": author} if author else {})
     try:
-        r = net.request("GET", "https://openlibrary.org/search.json", params=params, timeout=20)
+        # Open Library answers in 1-20 s; a slow one is a miss (not cached, a rerun retries), not 80 s of retries
+        r = net.request("GET", "https://openlibrary.org/search.json", params=params, timeout=8, tries=2)
         if r.status_code == 200 and not r.json().get("docs"):  # fall back to free text
-            r = net.request("GET", "https://openlibrary.org/search.json", timeout=20,
+            r = net.request("GET", "https://openlibrary.org/search.json", timeout=8, tries=2,
                             params={"q": f"{title} {author}".strip(), "limit": 5, "fields": fields})
     except httpx.TransportError:
         return _failed()
@@ -575,15 +576,16 @@ def run(sweep_dir, reads, geo, spines=None):
     ocr_p = sweep_dir / "ocr.json"  # keyed by best detection, so reruns from this stage do not re-OCR
     ocr_cache = json.loads(ocr_p.read_text()) if ocr_p.exists() else {}
     todo = [c for c in clusters if c["best"]["id"] not in ocr_cache]
-    with metrics.stage("ocr"):
-        for c, o in zip(todo, spine_ocr.read([c["crop_bytes"] for c in todo])):
-            if o["rotation"] is not None or not settings.OCR_ENABLED:
-                ocr_cache[c["best"]["id"]] = o
-            c["ocr"] = o
-    ocr_p.write_text(json.dumps(ocr_cache))
-    for c in clusters:
-        c["ocr"] = ocr_cache.get(c["best"]["id"], c.get("ocr", {"words": [], "rotation": None}))
-    boiler = spine_ocr.boilerplate([c["ocr"] for c in clusters])
+
+    def run_ocr():
+        with metrics.stage("ocr"):
+            for c, o in zip(todo, spine_ocr.read([c["crop_bytes"] for c in todo])):
+                if o["rotation"] is not None or not settings.OCR_ENABLED:
+                    ocr_cache[c["best"]["id"]] = o
+                c["ocr"] = o
+    # OCR runs while the catalogue resolves the claims (it waited ~25 s in front of them)
+    ocr_pool = ThreadPoolExecutor(1)
+    ocr_done = ocr_pool.submit(run_ocr)
 
     for note in load_notes(sweep_dir):
         if note.get("target", "book") != "book" or note["kind"] not in ("note", "exclude"):
@@ -604,6 +606,12 @@ def run(sweep_dir, reads, geo, spines=None):
     votes = [vote(c["texts"]) for c in clusters]
     with ThreadPoolExecutor(8) as ex:  # ponytail: shared cache dict, distinct keys per book
         resolved = list(ex.map(lambda v: resolve(v[0], v[1], v[2], v[3], cache) if v[0] else (None, 0.0, False), votes))
+    ocr_done.result()
+    ocr_pool.shutdown()
+    ocr_p.write_text(json.dumps(ocr_cache))
+    for c in clusters:
+        c["ocr"] = ocr_cache.get(c["best"]["id"], c.get("ocr", {"words": [], "rotation": None}))
+    boiler = spine_ocr.boilerplate([c["ocr"] for c in clusters])
 
     # OCR witness: veto claims the spine's own text contradicts, then try fragments on spines still unread
     witness = []
@@ -634,13 +642,14 @@ def run(sweep_dir, reads, geo, spines=None):
                 if not (cand and conf >= settings.CONF_MIN) and not c.get("excluded")]
         batches = [todo[k:k + 12] for k in range(0, len(todo), 12)]
         with ThreadPoolExecutor(4) as ex:
-            for batch, texts in zip(batches, ex.map(lambda b: vision.read_crops([clusters[i]["crop_bytes"] for i in b]),
-                                                    batches)):
-                for i, t in zip(batch, texts):
-                    cand, conf, support = crop_reader(t, clusters[i]["ocr"], boiler, cache)
-                    if cand:
-                        witness[i] = (cand, conf, False, {**witness[i][3], "id_source": "crop_reader",
-                                                          "crop_read": t["title"], "ocr_support": support})
+            reads_ = [(i, t) for batch, texts in zip(batches, ex.map(
+                lambda b: vision.read_crops([clusters[i]["crop_bytes"] for i in b]), batches)) for i, t in zip(batch, texts)]
+        with ThreadPoolExecutor(8) as ex:  # their catalogue lookups ran one at a time: ~100 s on a 30-spine sweep
+            for (i, t), (cand, conf, support) in zip(reads_, ex.map(
+                    lambda it: crop_reader(it[1], clusters[it[0]]["ocr"], boiler, cache), reads_)):
+                if cand:
+                    witness[i] = (cand, conf, False, {**witness[i][3], "id_source": "crop_reader",
+                                                      "crop_read": t["title"], "ocr_support": support})
     resolved = [x[:3] for x in witness]
     books = []
     for c, (title, author, publisher, agreement), (cand, conf, name_only), (*_, w) in zip(clusters, votes, resolved, witness):

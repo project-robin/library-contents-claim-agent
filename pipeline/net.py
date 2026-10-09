@@ -7,14 +7,14 @@ import httpx
 from pipeline import metrics
 
 
-def request(method, url, **kw):
-    for attempt in range(4):
+def request(method, url, tries=4, **kw):
+    for attempt in range(tries):
         try:
             r = httpx.request(method, url, **kw)
-            if r.status_code not in (429, 500, 502, 503, 504) or attempt == 3:
+            if r.status_code not in (429, 500, 502, 503, 504) or attempt == tries - 1:
                 return r
         except httpx.TransportError:
-            if attempt == 3:
+            if attempt == tries - 1:
                 raise
         metrics.count(f"http_retries:{httpx.URL(url).host}")
         time.sleep(2 ** attempt)
