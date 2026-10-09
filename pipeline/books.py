@@ -226,6 +226,42 @@ def merge(clusters):
     return out
 
 
+def same_book(books):
+    """After identification, on 3D clusters. Pieces the merge pass could not join resolve to one catalogue book: SAM
+    boxes the top or bottom of a tall upright spine on its own (another bottom height), and garbled reads ('THE OATH C
+    THE VAYUPUTH') are not related() to the clean title. Same title within 15 cm, and within half the taller spine's
+    height (8 cm at least), is one book; an unread piece inside an identified spine (within 40% of its thickness across, and
+    within its height if upright or its thickness if flat) is part of it. Views add up. Returns (kept, folded). Ceiling: two copies of one
+    book side by side become one."""
+    def near(a, b, title):
+        ca, cb = np.array(a["_center"]), np.array(b["_center"])
+        dxy, dz = float(np.linalg.norm(ca[:2] - cb[:2])), abs(float(ca[2] - cb[2]))
+        tall = max(a["spine_height_cm"] or 0, b["spine_height_cm"] or 0) / 100
+        if title:
+            return dxy < 0.15 and dz <= max(0.08, tall / 2)
+        span = (a["spine_height_cm"] if a["orientation"] == "upright" else a["spine_thickness_cm"]) or 0
+        # a neighbour's centre sits a full thickness away; a piece of this spine sits within it
+        return dxy < min(0.025, 0.4 * (a["spine_thickness_cm"] or 0) / 100) and dz <= span / 200
+    from pipeline.spine_ocr import same_work  # imports this module
+
+    def volumes_agree(a, b):  # a series' volumes can resolve to one catalogue title ('Volume 3', 'Volume 7')
+        na, nb = (re.findall(r"\d+", x["spine_text"]["title"] or "") for x in (a, b))
+        return not na or not nb or na == nb
+
+    kept, folded = [], 0
+    for b in sorted(books, key=lambda b: (bool(b["title"]), b["views"]), reverse=True):
+        k = next((k for k in kept if k["title"] and not k["excluded"] and not b["excluded"]
+                  and ((b["title"] and same_work(b["title"], k["title"]) and volumes_agree(k, b) and near(k, b, True))
+                       or (not b["title"] and not b["spine_text"]["title"] and near(k, b, False)))), None)
+        if k is None:
+            kept.append(b)
+        else:
+            k["views"] += b["views"]
+            folded += 1
+    keep = {id(b) for b in kept}
+    return [b for b in books if id(b) in keep], folded
+
+
 def seen_once(clusters, frames):
     """In a sweep of 20+ frames a real spine shows in several; one seen in a single frame with no text is a stray box
     (wall edge, a neighbour's sliver). Returns (kept, dropped)."""
@@ -594,11 +630,12 @@ def run(sweep_dir, reads, geo, spines=None):
             "_center": [round(float(v), 3) for v in c["center"]],
         })
     cache_p.write_text(json.dumps(cache))
+    books, folded = same_book(books) if geo.ok and with_3d else (books, 0)
     kept = [b for b in books if not b["excluded"]]
     stats = {"detections": len(dets), "detections_without_3d": len(dets) - len(with_3d),
              "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept),
              "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched,
-             "seen_once_dropped": len(dropped)}
+             "seen_once_dropped": len(dropped), "same_book_folded": folded}
     if not geo.ok:
         stats["warning"] = "no metric geometry: books could not be deduplicated or measured"
     return {"books": books, "stats": stats}

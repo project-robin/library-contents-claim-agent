@@ -243,3 +243,23 @@ def test_neighbour_words_on_an_angled_crop_do_not_veto():
     cand2, conf, w = spine_ocr.witness(cand, 0.9, ocr, set(), "Amish", {},
                                         neighbours=["The Room on the Roof Ruskin Bond"])
     assert cand2 is cand and conf == 0.9 and not w["ocr_veto"]
+
+
+def _bk(title, c, h=20.0, t=3.0, ori="upright", views=5, read=None):
+    return {"title": title, "spine_text": {"title": title if read is None else read, "author": "", "publisher": ""},
+            "_center": list(c), "spine_height_cm": h, "spine_thickness_cm": t, "orientation": ori, "views": views,
+            "excluded": ""}
+
+
+def test_same_book_joins_pieces_of_one_identified_spine():
+    """Live sweep 183215: Think Like a Monk came out 6 times (SAM boxed the top of the upright spine on its own, at
+    another height). Same book within its height is one; a neighbour, another volume, or a far copy is not."""
+    full = _bk("Think Like a Monk", (0.40, 0.30, 0.12), h=24, views=38)
+    top = _bk("Think Like a Monk", (0.39, 0.31, 0.21), h=8, views=5, read="")
+    piece = _bk("", (0.401, 0.301, 0.15), h=4, read="")
+    neighbour = _bk("", (0.40, 0.33, 0.12), h=22, read="")  # one spine thickness along the shelf
+    v3 = _bk("Volume", (0.40, 0.36, 0.12), read="Volume 3")
+    v7 = _bk("Volume", (0.40, 0.39, 0.12), read="Volume 7")
+    far = _bk("Think Like a Monk", (1.40, 0.30, 0.12))
+    out, folded = books.same_book([full, top, piece, neighbour, v3, v7, far])
+    assert out == [full, neighbour, v3, v7, far] and folded == 2 and full["views"] == 38 + 5 + 5
