@@ -49,6 +49,9 @@ def queue(geometry, books, items, book_prices, item_prices, book_stats):
     if book_stats.get("partial_boxes_dropped"):
         add("books", f"{book_stats['partial_boxes_dropped']} unread spine boxes under 10 cm long not counted as books "
                      "(pieces of a spine): check the sweep if a small book is missing")
+    if book_stats.get("over_frame_cap_dropped"):
+        add("books", f"{book_stats['over_frame_cap_dropped']} unread spine lines not counted: the unit "
+                     "showed fewer spines in one full view than the 3D count")
     if "warning" in book_stats:
         add("books", book_stats["warning"])
     if book_stats.get("spine_source") == "vision":

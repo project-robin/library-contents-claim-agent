@@ -262,6 +262,7 @@ def same_book(books):
             k = k or (named[0] if len(named) == 1 else None)
         if k is not None:
             k["views"] += b["views"]
+            k["_merged"] = k.get("_merged", []) + [b.get("id"), *b.get("_merged", [])]  # their frames show this book too
             folded += 1
         elif unread and not b["excluded"] and (b["spine_height_cm"] or 0) < 10:
             fragments += 1
@@ -269,6 +270,35 @@ def same_book(books):
             kept.append(b)
     keep = {id(b) for b in kept}
     return [b for b in books if id(b) in keep], folded, fragments
+
+
+def frame_cap(books, clusters, reads):
+    """The most books a unit can hold, when the whole unit fits in one view: Gemini read a photo of 12 books on a bed
+    as 12 spines (in 5 frames), while the 3D clusters still held unread pieces. A frame shows a unit when it holds
+    members of 75%+ of the unit's identified books; the cap is the most, over such frames, of the spines Gemini
+    listed plus the identified books not linked to the frame. Above
+    the cap, unread lines (weakest candidate, fewest views first) are dropped; any line with a title stays: on sweep
+    203017 dropping low-confidence titles too removed real books (21 -> 14). A long shelf
+    never fits one frame and keeps every line. Returns (kept, dropped)."""
+    by_id = {c["id"]: {m["frame"] for m in c["members"]} for c in clusters}
+    members = {b["id"]: set().union(*(by_id.get(i, set()) for i in [b["id"], *b.get("_merged", [])])) for b in books}
+    weak = lambda b: b["id_confidence"] < settings.CONF_IDENTIFIED
+    unread = lambda b: not b["title"]  # a real book read at low confidence (0.5) is never dropped, only unread lines
+    drop = set()
+    for unit in sorted({b["shelf"].split("-")[0] for b in books}):
+        ub = [b for b in books if b["shelf"].split("-")[0] == unit and not b["excluded"]]
+        known = [b for b in ub if not weak(b)]
+        if len(known) < 3:
+            continue
+        seen = lambda f: sum(f in members[b["id"]] for b in known)
+        # identified books not linked to the frame are added back: a box of a visible book can land in a neighbour's
+        # line (Oath and Ikigai in the bed photo), and a book truly out of view must still fit under the cap
+        cap = max((len(reads[f]["spines"]) + len(known) - seen(f) for f in reads if seen(f) >= 0.75 * len(known)),
+                  default=0)
+        if cap >= len(known) and len(ub) > cap:
+            spare = sorted((b for b in ub if unread(b)), key=lambda b: (b["id_confidence"], b["views"]))
+            drop |= {b["id"] for b in spare[:len(ub) - cap]}
+    return [b for b in books if b["id"] not in drop], len(drop)
 
 
 def seen_once(clusters, frames):
@@ -640,12 +670,13 @@ def run(sweep_dir, reads, geo, spines=None):
         })
     cache_p.write_text(json.dumps(cache))
     books, folded, fragments = same_book(books) if geo.ok and with_3d else (books, 0, 0)
+    books, over_cap = frame_cap(books, clusters, reads) if geo.ok and with_3d and spines is not None else (books, 0)
     kept = [b for b in books if not b["excluded"]]
     stats = {"detections": len(dets), "detections_without_3d": len(dets) - len(with_3d),
              "shelf_run_m": shelf_run_m(kept), "excluded_by_user": len(books) - len(kept),
              "spine_source": "vision" if spines is None else "sam", "vision_spines_unmatched": unmatched,
              "seen_once_dropped": len(dropped), "same_book_folded": folded,
-             "partial_boxes_dropped": fragments}
+             "partial_boxes_dropped": fragments, "over_frame_cap_dropped": over_cap}
     if not geo.ok:
         stats["warning"] = "no metric geometry: books could not be deduplicated or measured"
     return {"books": books, "stats": stats}

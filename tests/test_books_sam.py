@@ -266,3 +266,19 @@ def test_same_book_joins_pieces_of_one_identified_spine():
     out, folded, fragments = books.same_book([full, top, piece, neighbour, v3, v7, far, named, stub])
     assert out == [full, neighbour, v3, v7, far] and folded == 3 and fragments == 1
     assert full["views"] == 38 + 5 + 5 + 5
+
+
+def test_frame_cap_drops_only_unread_lines_above_one_full_view():
+    """Gemini saw 5 spines in a frame showing the whole unit; 3D held 4 identified + 1 weak title + 3 unread. Two
+    unread lines go (fewest views first); the weak title stays. Without a full view nothing is dropped."""
+    def line(i, title, conf, views=5):
+        return {"id": f"b{i}", "shelf": "A-1", "excluded": "", "title": title, "id_confidence": conf, "views": views}
+    known = [line(i, f"Book {i}", 0.99) for i in range(4)]
+    weak = line(4, "Maybe", 0.5)
+    unread = [line(5, "", 0.0, 9), line(6, "", 0.0, 2), line(7, "", 0.1, 3)]
+    clusters = [{"id": b["id"], "members": [{"frame": "f1"}]} for b in known + [weak] + unread]
+    reads = {"f1": {"spines": [{}] * 5}, "f2": {"spines": [{}] * 2}}
+    kept, n = books.frame_cap(known + [weak] + unread, clusters, reads)
+    assert n == 2 and [b["id"] for b in kept] == ["b0", "b1", "b2", "b3", "b4", "b5"]
+    clusters = [{"id": b["id"], "members": [{"frame": f"f{i}"}]} for i, b in enumerate(known + [weak] + unread)]
+    assert books.frame_cap(known + [weak] + unread, clusters, reads)[1] == 0  # no frame shows the unit
