@@ -70,7 +70,8 @@ def lower_median(offers):
     return s[(len(s) - 1) // 2]
 
 
-# median 2-3 s, but 1 in 20 runs 15-45 s; a retry after a 12 s cutoff is usually quick (net.request retries)
+# median 2-3 s, but 1 in 20 runs 15-45 s; a retry after a 12 s cutoff is usually quick. Two tries only: four
+# (12 s each plus back-off) once held a whole sweep's pricing for 55 s; a book still has its other two queries
 SERPER_TIMEOUT_S = 12
 SERPER_PARALLEL = 8  # requests in flight: 48 at once drew 111 HTTP 429s for 106 answers, and their back-off waits
 _serper_slots = threading.BoundedSemaphore(SERPER_PARALLEL)
@@ -92,7 +93,7 @@ class Pricer:
             if not settings.SERPER_API_KEY:
                 return {"retrieved_at": "", "results": []}
             with _serper_slots:
-                r = net.request("POST", "https://google.serper.dev/shopping", timeout=SERPER_TIMEOUT_S,
+                r = net.request("POST", "https://google.serper.dev/shopping", timeout=SERPER_TIMEOUT_S, tries=2,
                                 headers={"X-API-KEY": settings.SERPER_API_KEY},
                                 json={"q": q, "gl": gl, "hl": "en", "num": 20})
             metrics.count("serper_queries")
