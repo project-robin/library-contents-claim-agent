@@ -46,6 +46,9 @@ def queue(geometry, books, items, book_prices, item_prices, book_stats):
         add("room", f"room measurement confidence {geometry.get('confidence', 0)}")
     if "polygon" in geometry.get("shape_method", "") or "unseen" in geometry.get("shape_method", ""):
         add("room", geometry["shape_method"])
+    if book_stats.get("partial_boxes_dropped"):
+        add("books", f"{book_stats['partial_boxes_dropped']} unread spine boxes under 10 cm long not counted as books "
+                     "(pieces of a spine): check the sweep if a small book is missing")
     if "warning" in book_stats:
         add("books", book_stats["warning"])
     if book_stats.get("spine_source") == "vision":

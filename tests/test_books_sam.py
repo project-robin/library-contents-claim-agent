@@ -248,7 +248,7 @@ def test_neighbour_words_on_an_angled_crop_do_not_veto():
 def _bk(title, c, h=20.0, t=3.0, ori="upright", views=5, read=None):
     return {"title": title, "spine_text": {"title": title if read is None else read, "author": "", "publisher": ""},
             "_center": list(c), "spine_height_cm": h, "spine_thickness_cm": t, "orientation": ori, "views": views,
-            "excluded": ""}
+            "excluded": "", "author": "", "ocr_text": ""}
 
 
 def test_same_book_joins_pieces_of_one_identified_spine():
@@ -261,5 +261,8 @@ def test_same_book_joins_pieces_of_one_identified_spine():
     v3 = _bk("Volume", (0.40, 0.36, 0.12), read="Volume 3")
     v7 = _bk("Volume", (0.40, 0.39, 0.12), read="Volume 7")
     far = _bk("Think Like a Monk", (1.40, 0.30, 0.12))
-    out, folded = books.same_book([full, top, piece, neighbour, v3, v7, far])
-    assert out == [full, neighbour, v3, v7, far] and folded == 2 and full["views"] == 38 + 5 + 5
+    named = {**_bk("", (0.45, 0.30, 0.10), h=6, read=""), "ocr_text": "LIKE MONK"}  # its OCR names the book
+    stub = _bk("", (0.80, 0.30, 0.10), h=4, read="")  # a 4 cm unread box: a piece of some spine, not a book
+    out, folded, fragments = books.same_book([full, top, piece, neighbour, v3, v7, far, named, stub])
+    assert out == [full, neighbour, v3, v7, far] and folded == 3 and fragments == 1
+    assert full["views"] == 38 + 5 + 5 + 5
