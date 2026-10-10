@@ -5,6 +5,7 @@ ends, separate pipeline stages count, read, measure and price every spine and ob
 output is a `claim_packet.json` plus an HTML report. Every number traces back to a saved frame and a price URL.
 
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Demo video (one unedited take, 8 min 12 s; phone screen recording re-encoded to 720p): https://drive.google.com/file/d/13-gCkYkY3VdGch1Pxio01V_SUFxTr0C6/view?usp=sharing
 - Demo sweep (the one in the video): claim packet, report and saved frames in [demo/](demo/)
 - Results against ground truth: [docs/RESULTS.md](docs/RESULTS.md)
 - Failure log: [docs/FAILURE_LOG.md](docs/FAILURE_LOG.md) (one page; the full history is [docs/DEV_LOG.md](docs/DEV_LOG.md))
