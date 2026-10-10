@@ -1,0 +1,58 @@
+{
+  "latency_s": {
+    "recon": 88.63,
+    "geometry": 20.89,
+    "ocr": 40.19,
+    "items": 27.66,
+    "books": 94.5,
+    "checker": 16.55,
+    "pricing": 60.34,
+    "packet": 0.02,
+    "keyframes": 0.0,
+    "reads": 0.07,
+    "spines": 56.3
+  },
+  "tokens": {
+    "drex": {
+      "in": 107284,
+      "out": 0
+    },
+    "gemini-3.8-live": {
+      "in": 267667,
+      "out": 2892
+    },
+    "gemini-3.8-flash": {
+      "in": 19129,
+      "out": 1536
+    },
+    "gemini-3.5-flash-lite": {
+      "in": 161358,
+      "out": 34064
+    }
+  },
+  "counters": {
+    "drex_calls": 82,
+    "ocr_crops": 42,
+    "ocr_seconds": 40.1915847399996,
+    "vision_fallbacks": 1,
+    "vision_retries": 12,
+    "serper_queries": 106,
+    "sam_images": 187,
+    "sam_seconds": 441.09830272500585,
+    "gpu_seconds": 72.64584670699878,
+    "http_retries:google.serper.dev": 5
+  },
+  "cost_usd": {
+    "drex": 0.0536,
+    "gemini-3.8-live": 0.8377,
+    "gemini-3.8-flash": 0.0201,
+    "gemini-3.5-flash-lite": 0.1336,
+    "serper": 0.106,
+    "gpu": 0.0392,
+    "ocr": 0.004,
+    "sam": 0.0
+  },
+  "cost_usd_total": 1.1942,
+  "keyframes": 187,
+  "time_to_packet_s": 243.7
+}

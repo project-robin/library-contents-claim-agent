@@ -1,0 +1,1706 @@
+{
+ "sweep": {
+  "id": "20261010-131406-5ced",
+  "captured_at": "2026-10-10T07:44:06+00:00",
+  "device": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36",
+  "duration_s": 153.98,
+  "country": "IN",
+  "currency": "INR"
+ },
+ "room": {
+  "length_m": 3.24,
+  "width_m": 2.82,
+  "height_m": 2.4,
+  "floor_area_m2": 9.14,
+  "wall_area_m2": 29.12,
+  "shelved_wall_area_m2": null,
+  "scale_method": "printed ArUco marker, 15.0 cm side, 20 detections, median abs deviation 2.0%; MapAnything metric output agrees within 6.8%",
+  "confidence": 0.81,
+  "floor_area_ft2": 98.4,
+  "wall_area_ft2": 313.4,
+  "shelved_wall_area_ft2": null,
+  "shape_method": "rectangle from the outermost wall planes (some wall segments unseen)",
+  "perimeter_m": 12.12,
+  "wall_area_note": "gross: perimeter x height; doors and windows not subtracted",
+  "scale_samples": 20
+ },
+ "books": [
+  {
+   "id": "b_004",
+   "shelf": "A-1",
+   "position": 4,
+   "frame_ref": "frames/000253.jpg#t=84.44",
+   "status": "identified",
+   "title": "Will Grayson, Will Grayson",
+   "author": "John Green, David Levithan",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 19.6,
+   "spine_thickness_cm": 2.5,
+   "id_confidence": 0.996,
+   "replacement_cost": {
+    "amount": 259.12,
+    "source": "Google Shopping via Serper: Bookbot.com",
+    "url": "https://www.google.com/search?ibp=oshop&q=Will+Grayson%2C+Will+Grayson+John+Green&prds=localAnnotatedOfferId:1,catalogid:17467226299257396317,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:57+00:00",
+    "converted": false,
+    "offers_considered": 2,
+    "listing_title": "Will Grayson, Will Grayson - John Green; David Levithan"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_004.jpg",
+   "views": 19,
+   "spine_text": {
+    "title": "WILL GRAYSON, WILL GRAYSON",
+    "author": "JOHN GREEN DAVID LEVITHAN",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=HHDAs8tS4sUC&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine clearly displays 'Will Grayson, Will Grayson' by John Green, David Levithan."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_005",
+   "shelf": "A-1",
+   "position": 5,
+   "frame_ref": "frames/000253.jpg#t=84.44",
+   "status": "identified",
+   "title": "Raavan - Aryavart Ka Shatru (Raavan",
+   "author": "Amish Tripathi",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 19.8,
+   "spine_thickness_cm": 2.7,
+   "id_confidence": 0.981,
+   "replacement_cost": {
+    "amount": 147.0,
+    "source": "Google Shopping via Serper: MyPustak.com",
+    "url": "https://www.google.com/search?ibp=oshop&q=Raavan+-+Aryavart+Ka+Shatru+(Raavan+Amish+Tripathi&prds=localAnnotatedOfferId:1,catalogid:12183215036680001730,gpcid:14070159235506843821,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:07+00:00",
+    "converted": false,
+    "offers_considered": 6,
+    "listing_title": "Raavan : Aryavart Ka Shatru"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_005.jpg",
+   "views": 46,
+   "spine_text": {
+    "title": "RAAVAN ENEMY OF ARYAVARTA",
+    "author": "AMISH",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=QIICEQAAQBAJ&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine shows 'Raavan Enemy of Aryavarta' by Amish."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_007",
+   "shelf": "A-1",
+   "position": 7,
+   "frame_ref": "frames/000253.jpg#t=84.44",
+   "status": "identified",
+   "title": "Call Me by Your Name",
+   "author": "André Aciman",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 19.5,
+   "spine_thickness_cm": 2.6,
+   "id_confidence": 0.994,
+   "replacement_cost": {
+    "amount": 410.0,
+    "source": "Google Shopping via Serper: amazon.in",
+    "url": "https://www.google.com/search?ibp=oshop&q=Call+Me+by+Your+Name+Andr%C3%A9+Aciman&prds=localAnnotatedOfferId:1,catalogid:5511535003587506797,gpcid:14699307577614113396,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:58+00:00",
+    "converted": false,
+    "offers_considered": 8,
+    "listing_title": "Call Me by Your Name: How a Little Film Touched So Many Lives"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_007.jpg",
+   "views": 31,
+   "spine_text": {
+    "title": "CALL ME BY YOUR NAME",
+    "author": "André Aciman",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=WK_qzAEACAAJ&dq=CALL+ME+BY+YOUR+NAME+Andr%C3%A9+Aciman&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine displays 'Call Me By Your Name' by André Aciman."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_008",
+   "shelf": "A-1",
+   "position": 8,
+   "frame_ref": "frames/000253.jpg#t=84.44",
+   "status": "identified",
+   "title": "Othello",
+   "author": "William Shakespeare",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 15.2,
+   "spine_thickness_cm": 2.5,
+   "id_confidence": 0.997,
+   "replacement_cost": {
+    "amount": 135.0,
+    "source": "Google Shopping via Serper: eLocalshop",
+    "url": "https://www.google.com/search?ibp=oshop&q=Othello+William+Shakespeare&prds=localAnnotatedOfferId:1,catalogid:6552121311985422644,gpcid:6284428305921219652,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:00+00:00",
+    "converted": false,
+    "offers_considered": 60,
+    "listing_title": "Othello New"
+   },
+   "used_value": {
+    "amount": 49.0,
+    "source": "Google Shopping via Serper: Bookchor (second-hand seller)",
+    "url": "https://www.google.com/search?ibp=oshop&q=Othello+William+Shakespeare&prds=localAnnotatedOfferId:1,catalogid:8162805192739905064,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:00+00:00",
+    "condition_assumed": "used, as listed by a second-hand seller (median of 3 matching used listings)",
+    "converted": false,
+    "listing_title": "William Shakespeare : Othello The Moor Of Venice"
+   },
+   "orientation": "flat",
+   "crop": "crops/b_008.jpg",
+   "views": 39,
+   "spine_text": {
+    "title": "OTHELLO",
+    "author": "WILLIAM SHAKESPEARE",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=MdAmDwAAQBAJ&dq=OTHELLO+WILLIAM+SHAKESPEARE&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine shows 'William Shakespeare' and 'Othello'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_014",
+   "shelf": "A-1",
+   "position": 14,
+   "frame_ref": "frames/000168.jpg#t=57.35",
+   "status": "identified",
+   "title": "Think Like a Monk",
+   "author": "Jay Shetty",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 18.6,
+   "spine_thickness_cm": 5.9,
+   "id_confidence": 0.987,
+   "replacement_cost": {
+    "amount": 142.0,
+    "source": "Google Shopping via Serper: Meesho",
+    "url": "https://www.google.com/search?ibp=oshop&q=Think+Like+a+Monk+Jay+Shetty+paperback&prds=localAnnotatedOfferId:1,catalogid:5842817649638587989,gpcid:7954267587124578396,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:59+00:00",
+    "converted": false,
+    "offers_considered": 3,
+    "listing_title": "Think Like a Monk"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "upright",
+   "crop": "crops/b_014.jpg",
+   "views": 60,
+   "spine_text": {
+    "title": "THINK LIKE A MONK",
+    "author": "JAY SHETTY",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=N-T7DwAAQBAJ&dq=intitle:THINK+LIKE+A+MONK+inauthor:JAY+SHETTY&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine reads 'Think Like A Monk' by Jay Shetty."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_016",
+   "shelf": "A-1",
+   "position": 16,
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "status": "identified",
+   "title": "Ikigai",
+   "author": "Héctor García, Francesc Miralles",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 16.5,
+   "spine_thickness_cm": 4.5,
+   "id_confidence": 0.5,
+   "replacement_cost": {
+    "amount": 179.0,
+    "source": "Google Shopping via Serper: Thebookx",
+    "url": "https://www.google.com/search?ibp=oshop&q=Ikigai+Garc%C3%ADa+book&prds=localAnnotatedOfferId:1,catalogid:9560865210902332145,gpcid:11647725355576320653,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:01+00:00",
+    "converted": false,
+    "offers_considered": 9,
+    "listing_title": "Ikigai"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "upright",
+   "crop": "crops/b_016.jpg",
+   "views": 38,
+   "spine_text": {
+    "title": "IKIGAI",
+    "author": "",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=MDksDwAAQBAJ&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine shows 'Ikigai'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_018",
+   "shelf": "A-1",
+   "position": 18,
+   "frame_ref": "frames/000212.jpg#t=71.19",
+   "status": "identified",
+   "title": "Sita - Mithila Ki Yoddha (Sita-Warrior of Mithila)",
+   "author": "Amish Tripathi",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 17.4,
+   "spine_thickness_cm": 3.7,
+   "id_confidence": 0.989,
+   "replacement_cost": {
+    "amount": 239.0,
+    "source": "Google Shopping via Serper: Boitoi.in",
+    "url": "https://www.google.com/search?ibp=oshop&q=Sita+-+Mithila+Ki+Yoddha+(Sita-Warrior+of+Mithila)+Tripathi+book&prds=localAnnotatedOfferId:1,catalogid:11709874583172314308,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:01+00:00",
+    "converted": false,
+    "offers_considered": 6,
+    "listing_title": "Sita Warrior of Mithila ram Chandra Series Book 2"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "upright",
+   "crop": "crops/b_018.jpg",
+   "views": 96,
+   "spine_text": {
+    "title": "SITA WARRIOR OF MITHILA",
+    "author": "AMISH",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=wNytEAAAQBAJ&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine displays 'Sita Warrior of Mithila' by Amish."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_021",
+   "shelf": "A-1",
+   "position": 21,
+   "frame_ref": "frames/000191.jpg#t=63.77",
+   "status": "identified",
+   "title": "“The” Vayu Purana",
+   "author": "",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 10.3,
+   "spine_thickness_cm": 2.7,
+   "id_confidence": 0.612,
+   "replacement_cost": {
+    "amount": 645.0,
+    "source": "Google Shopping via Serper: amazon.in",
+    "url": "https://www.google.com/search?ibp=oshop&q=%E2%80%9CThe%E2%80%9D+Vayu+Purana&prds=localAnnotatedOfferId:1,catalogid:14165577244120694594,gpcid:4830206896500568000,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:03+00:00",
+    "converted": false,
+    "offers_considered": 18,
+    "listing_title": "Vayu Purana Vol-38 Part-ii"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_021.jpg",
+   "views": 4,
+   "spine_text": {
+    "title": "THE OAT THE VAYUI",
+    "author": "",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=YcDpADgYGk4C&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The spine partially shows 'The Vayu...'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_023",
+   "shelf": "A-1",
+   "position": 23,
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "status": "identified",
+   "title": "Japonisme: Ikigai, Forest Bathing, Wabi-sabi and more",
+   "author": "Erin Niimi Longhurst",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 13.7,
+   "spine_thickness_cm": 3.1,
+   "id_confidence": 0.99,
+   "replacement_cost": {
+    "amount": 416.0,
+    "source": "Google Shopping via Serper: Flipkart",
+    "url": "https://www.google.com/search?ibp=oshop&q=Japonisme%3A+Ikigai%2C+Forest+Bathing%2C+Wabi-sabi+and+more+Longhurst+book&prds=localAnnotatedOfferId:1,catalogid:9342921718607457302,gpcid:4360234714491218755,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:03+00:00",
+    "converted": false,
+    "offers_considered": 1,
+    "listing_title": "Japonisme | Erin Niimi Longhurst"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_023.jpg",
+   "views": 21,
+   "spine_text": {
+    "title": "Japonisme",
+    "author": "Erin Niimi Longhurst",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "https://play.google.com/store/books/details?id=c-M6DwAAQBAJ&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The visible text clearly displays the title 'Japonisme' and author 'Erin Niimi Longhurst'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_024",
+   "shelf": "A-1",
+   "position": 24,
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "status": "identified",
+   "title": "The Oath of the Vayuputras",
+   "author": "Amish Tripathi",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 17.9,
+   "spine_thickness_cm": 2.7,
+   "id_confidence": 0.998,
+   "replacement_cost": {
+    "amount": 229.0,
+    "source": "Google Shopping via Serper: bluediarybooks.com",
+    "url": "https://www.google.com/search?ibp=oshop&q=The+Oath+of+the+Vayuputras+Amish+Tripathi&prds=localAnnotatedOfferId:1,catalogid:8006170829264368568,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:04+00:00",
+    "converted": false,
+    "offers_considered": 8,
+    "listing_title": "Oath of the Vayuputras (The Shiva Trilogy)"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_024.jpg",
+   "views": 53,
+   "spine_text": {
+    "title": "THE OATH OF THE VAYUPUTRAS",
+    "author": "AMISH",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=ZO9gBQAAQBAJ&dq=intitle:THE+OATH+OF+THE+VAYUPUTRAS+inauthor:AMISH&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The visible text shows 'The Oath of the Vayuputras' and author 'Amish'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_025",
+   "shelf": "A-1",
+   "position": 25,
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "status": "identified",
+   "title": "The Wimpy Kid Do-It-Yourself Book",
+   "author": "Jeff Kinney",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 19.4,
+   "spine_thickness_cm": 2.2,
+   "id_confidence": 0.988,
+   "replacement_cost": {
+    "amount": 281.0,
+    "source": "Google Shopping via Serper: Flipkart",
+    "url": "https://www.google.com/search?ibp=oshop&q=The+Wimpy+Kid+Do-It-Yourself+Book+Jeff+Kinney&prds=localAnnotatedOfferId:1,catalogid:9774539179635031782,gpcid:17299506185870580194,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:06+00:00",
+    "converted": false,
+    "offers_considered": 10,
+    "listing_title": "Diary Of A Wimpy Kid: Do-it-yourself Book"
+   },
+   "used_value": {
+    "amount": 180.0,
+    "source": "Google Shopping via Serper: Bookchor (second-hand seller)",
+    "url": "https://www.google.com/search?ibp=oshop&q=The+Wimpy+Kid+Do-It-Yourself+Book+Kinney+book&prds=localAnnotatedOfferId:1,catalogid:3928880066820803469,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:06+00:00",
+    "condition_assumed": "used, as listed by a second-hand seller (median of 5 matching used listings)",
+    "converted": false,
+    "listing_title": "Diary of a Wimpy Kid Do-It-Yourself Book"
+   },
+   "orientation": "flat",
+   "crop": "crops/b_025.jpg",
+   "views": 10,
+   "spine_text": {
+    "title": "The Wimpy Kid Do-It-Yourself Book",
+    "author": "JEFF KINNEY",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=m0RGuAAACAAJ&dq=intitle:The+Wimpy+Kid+Do-It-Yourself+Book+inauthor:JEFF+KINNEY&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The visible text displays 'The Wimpy Kid Do-It-Yourself Book' and author 'Jeff Kinney'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_026",
+   "shelf": "A-1",
+   "position": 26,
+   "frame_ref": "frames/000168.jpg#t=57.35",
+   "status": "identified",
+   "title": "Tom Gates: Family, Friends and Furry Creatures",
+   "author": "Liz Pichon",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 19.3,
+   "spine_thickness_cm": 3.1,
+   "id_confidence": 0.989,
+   "replacement_cost": {
+    "amount": 280.0,
+    "source": "Google Shopping via Serper: The Bookworm",
+    "url": "https://www.google.com/search?ibp=oshop&q=Tom+Gates%3A+Family%2C+Friends+and+Furry+Creatures+Pichon+book&prds=localAnnotatedOfferId:1,catalogid:14961491155722654734,gpcid:16013816164039060698,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:08+00:00",
+    "converted": false,
+    "offers_considered": 4,
+    "listing_title": "Tom Gates #12: Family Friends And Furry Creatures"
+   },
+   "used_value": {
+    "amount": 180.0,
+    "source": "Google Shopping via Serper: Bookchor (second-hand seller)",
+    "url": "https://www.google.com/search?ibp=oshop&q=Tom+Gates%3A+Family%2C+Friends+and+Furry+Creatures+Pichon+book&prds=localAnnotatedOfferId:1,catalogid:15238784002282830850,gpcid:17559442829900695894,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:08+00:00",
+    "condition_assumed": "used, as listed by a second-hand seller (median of 2 matching used listings)",
+    "converted": false,
+    "listing_title": "Tom Gates: Family, Friends and Furry Creatures"
+   },
+   "orientation": "flat",
+   "crop": "crops/b_026.jpg",
+   "views": 55,
+   "spine_text": {
+    "title": "FAMILY, FRIENDS AND FURRY CREATURES",
+    "author": "TOM",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=3hjCDgAAQBAJ&dq=FAMILY,+FRIENDS+AND+FURRY+CREATURES+TOM&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The visible text shows 'Tom Gates: Family, Friends and Furry Creatures' and author 'Liz Pichon'."
+   },
+   "marks": [],
+   "notes": []
+  },
+  {
+   "id": "b_027",
+   "shelf": "A-1",
+   "position": 27,
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "status": "identified",
+   "title": "The Immortals of Meluha",
+   "author": "Amish",
+   "edition": "",
+   "isbn": "",
+   "spine_height_cm": 17.3,
+   "spine_thickness_cm": 3.2,
+   "id_confidence": 0.997,
+   "replacement_cost": {
+    "amount": 233.0,
+    "source": "Google Shopping via Serper: Flipkart",
+    "url": "https://www.google.com/search?ibp=oshop&q=The+Immortals+of+Meluha+Amish+book&prds=localAnnotatedOfferId:1,catalogid:1337811224789773130,gpcid:1673656834935756117,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:50:10+00:00",
+    "converted": false,
+    "offers_considered": 4,
+    "listing_title": "The Immortals Of Meluha"
+   },
+   "used_value": {
+    "amount": null,
+    "source": "",
+    "url": "",
+    "retrieved_at": "",
+    "condition_assumed": ""
+   },
+   "orientation": "flat",
+   "crop": "crops/b_027.jpg",
+   "views": 37,
+   "spine_text": {
+    "title": "THE IMMORTALS OF MELUHA",
+    "author": "AMISH",
+    "publisher": ""
+   },
+   "catalog": {
+    "source": "Google Books",
+    "url": "http://books.google.co.in/books?id=3uXa0QEACAAJ&dq=THE+IMMORTALS+OF+MELUHA+AMISH&hl=&as_pt=BOOKS&source=gbs_api"
+   },
+   "checker": {
+    "verdict": "match",
+    "reason": "The visible text clearly shows 'The Immortals of Meluha' and author 'Amish'."
+   },
+   "marks": [],
+   "notes": []
+  }
+ ],
+ "items": [
+  {
+   "id": "i_002",
+   "category": "furniture",
+   "description": "bed with patterned bedsheet",
+   "brand_model": "",
+   "frame_ref": "frames/000182.jpg#t=60.74",
+   "dimensions_cm": {
+    "w": 48.0,
+    "h": 6.0,
+    "d": 24.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 686.0,
+    "high": 2343.0,
+    "source": "Google Shopping via Serper, query 'fabric bed with patterned bedsheet' (19 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:10297809122970759633,gpcid:13441730304490318309,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:53+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:10297809122970759633,gpcid:13441730304490318309,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:15690050333059765360,gpcid:11834911100895418811,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:8603504584741880415,gpcid:606495761702295375,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:3187219336417459954,gpcid:10442598307456094805,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+in+bed+in+with+in+patterned+in+bedsheet&prds=localAnnotatedOfferId:1,catalogid:12566813151179431447,gpcid:59062485783442117,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.95,
+   "material": "fabric",
+   "crop": "crops/i_002.jpg",
+   "views": 11,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_004",
+   "category": "textile",
+   "description": "Grey curtain hanging against the wall",
+   "brand_model": "",
+   "frame_ref": "frames/000011.jpg#t=4.28",
+   "dimensions_cm": {
+    "w": 144.0,
+    "h": 85.0,
+    "d": 27.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 678.5,
+    "high": 1596.75,
+    "source": "Google Shopping via Serper, query 'fabric Grey curtain hanging against the wall' (6 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+a+Grey+a+curtain+a+hanging+a+against+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:14724246007237861540,gpcid:15098366946494191809,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:54+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+a+Grey+a+curtain+a+hanging+a+against+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:14724246007237861540,gpcid:15098366946494191809,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+a+Grey+a+curtain+a+hanging+a+against+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:13212847402226521865,gpcid:18370958331553253496,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+a+Grey+a+curtain+a+hanging+a+against+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:3620125682932751780,gpcid:5763818607051629379,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+a+Grey+a+curtain+a+hanging+a+against+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:13964697470738197119,gpcid:13232528743288364615,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.9,
+   "material": "fabric",
+   "crop": "crops/i_004.jpg",
+   "views": 6,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_005",
+   "category": "textile",
+   "description": "Bed sheet with floral pattern",
+   "brand_model": "",
+   "frame_ref": "frames/000011.jpg#t=4.28",
+   "dimensions_cm": {
+    "w": 29.0,
+    "h": 17.0,
+    "d": 15.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 135.0,
+    "high": 399.0,
+    "source": "Google Shopping via Serper, query 'fabric Bed sheet with floral pattern' (15 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:13389880660604495417,gpcid:2878943403299435972,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:54+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:13389880660604495417,gpcid:2878943403299435972,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:14927183207005949924,gpcid:6278039043869505261,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:13550683609967079467,gpcid:9268847732878470974,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:14044113795265852329,gpcid:5157896728512403228,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+for+Bed+for+sheet+for+with+for+floral+for+pattern&prds=localAnnotatedOfferId:1,catalogid:4738472073255744528,gpcid:1459294535482884029,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.92,
+   "material": "fabric",
+   "crop": "crops/i_005.jpg",
+   "views": 6,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_006",
+   "category": "rug",
+   "description": "bedsheet or rug with a floral pattern",
+   "brand_model": "",
+   "frame_ref": "frames/000103.jpg#t=34.44",
+   "dimensions_cm": {
+    "w": 23.0,
+    "h": 6.0,
+    "d": 8.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 461.25,
+    "high": 1599.0,
+    "source": "Google Shopping via Serper, query 'fabric bedsheet or rug with a floral pattern' (18 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:12142921793648861537,gpcid:1748654721966591871,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:53+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:12142921793648861537,gpcid:1748654721966591871,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:11297964545757265134,gpcid:2912992567810908245,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:11443616792273974524,gpcid:8447329336272712159,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:4037637081819661078,gpcid:503756815517829795,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+or+rug+with+a+floral+pattern&prds=localAnnotatedOfferId:1,catalogid:3003869288791153510,gpcid:257736203026810030,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.92,
+   "material": "fabric",
+   "crop": "crops/i_006.jpg",
+   "views": 3,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_007",
+   "category": "furniture",
+   "description": "Wardrobe with curtain",
+   "brand_model": "",
+   "frame_ref": "frames/000113.jpg#t=37.76",
+   "dimensions_cm": {
+    "w": 49.0,
+    "h": 46.0,
+    "d": 2.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 37874.0,
+    "high": 78549.75,
+    "source": "Google Shopping via Serper, query 'wood Wardrobe with curtain' (14 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:9157922426026645895,gpcid:4245881201678876825,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:53+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:9157922426026645895,gpcid:4245881201678876825,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:11690438671934084366,gpcid:5083005947611771199,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:4289721761234060300,gpcid:3909170955796122902,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:12883891005702671440,gpcid:9165054094900354929,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+Wardrobe+with+curtain&prds=localAnnotatedOfferId:1,catalogid:18149195587048299594,gpcid:6176229677354771390,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.89,
+   "material": "wood",
+   "crop": "crops/i_007.jpg",
+   "views": 8,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_010",
+   "category": "art",
+   "description": "Spider-Man artwork on headboard",
+   "brand_model": "",
+   "frame_ref": "frames/000133.jpg#t=44.41",
+   "dimensions_cm": {
+    "w": 143.0,
+    "h": 32.0,
+    "d": 3.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 2999.0,
+    "high": 8749.0,
+    "source": "Google Shopping via Serper, query 'Spider-Man artwork on headboard framed print' (4 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=Spider-Man+artwork+on+headboard+framed+print&prds=localAnnotatedOfferId:1,catalogid:18027385288597260336,gpcid:2093701273177221841,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:54+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=Spider-Man+artwork+on+headboard+framed+print&prds=localAnnotatedOfferId:1,catalogid:18027385288597260336,gpcid:2093701273177221841,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=Spider-Man+artwork+on+headboard+framed+print&prds=localAnnotatedOfferId:1,catalogid:10089583724508426154,gpcid:5217241119386656890,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=Spider-Man+artwork+on+headboard+framed+print&prds=localAnnotatedOfferId:1,catalogid:15553450732671359901,gpcid:8934531741165392822,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.94,
+   "material": "canvas",
+   "crop": "crops/i_010.jpg",
+   "views": 13,
+   "is_print": true,
+   "notes": []
+  },
+  {
+   "id": "i_012",
+   "category": "textile",
+   "description": "bedsheet with floral and berry pattern",
+   "brand_model": "",
+   "frame_ref": "frames/000201.jpg#t=67.08",
+   "dimensions_cm": {
+    "w": 18.0,
+    "h": 5.0,
+    "d": 12.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 879.75,
+    "high": 1916.75,
+    "source": "Google Shopping via Serper, query 'fabric bedsheet with floral and berry pattern' (16 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:2674479232707010830,gpcid:1740446555898543137,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:53+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:2674479232707010830,gpcid:1740446555898543137,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:4268506355480758401,gpcid:3523404376160656003,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:8236129458928665141,gpcid:6463245924277295785,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:13265095922617750771,gpcid:336481778481849877,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+bedsheet+with+floral+and+berry+pattern&prds=localAnnotatedOfferId:1,catalogid:18230977656957742170,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.76,
+   "material": "fabric",
+   "crop": "crops/i_012.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_013",
+   "category": "decor",
+   "description": "Blue and white checkered cylindrical bolster pillow",
+   "brand_model": "",
+   "frame_ref": "frames/000233.jpg#t=77.73",
+   "dimensions_cm": {
+    "w": 37.0,
+    "h": 9.0,
+    "d": 18.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 340.5,
+    "high": 1558.25,
+    "source": "Google Shopping via Serper, query 'fabric Blue and white checkered cylindrical bolster pillow' (4 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+Blue+and+white+checkered+cylindrical+bolster+pillow&prds=localAnnotatedOfferId:1,catalogid:5764677139365730930,gpcid:1503208188753474321,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:54+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+Blue+and+white+checkered+cylindrical+bolster+pillow&prds=localAnnotatedOfferId:1,catalogid:5764677139365730930,gpcid:1503208188753474321,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+Blue+and+white+checkered+cylindrical+bolster+pillow&prds=localAnnotatedOfferId:1,catalogid:18340812079084665403,gpcid:7514335739759468,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.93,
+   "material": "fabric",
+   "crop": "crops/i_013.jpg",
+   "views": 6,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_014",
+   "category": "decor",
+   "description": "White and blue patterned decorative pillow",
+   "brand_model": "",
+   "frame_ref": "frames/000233.jpg#t=77.73",
+   "dimensions_cm": {
+    "w": 83.0,
+    "h": 20.0,
+    "d": 29.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 498.5,
+    "high": 1486.0,
+    "source": "Google Shopping via Serper, query 'fabric White and blue patterned decorative pillow' (9 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:9961374179170133445,gpcid:3239007587610790068,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:55+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:9961374179170133445,gpcid:3239007587610790068,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:15822802335626943657,gpcid:9664760697981699355,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:17093785493199892940,gpcid:1878941627345871600,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:5501712809739067979,gpcid:9014006874189365824,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=fabric+White+and+blue+patterned+decorative+pillow&prds=localAnnotatedOfferId:1,catalogid:4380872166268370014,gpcid:9818191676775740536,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.93,
+   "material": "fabric",
+   "crop": "crops/i_014.jpg",
+   "views": 10,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_018",
+   "category": "furniture",
+   "description": "Vanity or desk console with marble top",
+   "brand_model": "",
+   "frame_ref": "frames/000332.jpg#t=110.7",
+   "dimensions_cm": {
+    "w": 65.0,
+    "h": 82.0,
+    "d": 29.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 15999.0,
+    "high": 52500.0,
+    "source": "Google Shopping via Serper, query 'wood, marble Vanity or desk console with marble top' (3 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=wood%2C+with+marble+with+Vanity+with+or+with+desk+with+console+with+with+with+marble+with+top&prds=localAnnotatedOfferId:1,catalogid:6092277438370696342,gpcid:17411418779512384017,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:56+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+with+marble+with+Vanity+with+or+with+desk+with+console+with+with+with+marble+with+top&prds=localAnnotatedOfferId:1,catalogid:6092277438370696342,gpcid:17411418779512384017,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+with+marble+with+Vanity+with+or+with+desk+with+console+with+with+with+marble+with+top&prds=localAnnotatedOfferId:1,catalogid:9163935489807030220,gpcid:3998876101566130412,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+with+marble+with+Vanity+with+or+with+desk+with+console+with+with+with+marble+with+top&prds=localAnnotatedOfferId:1,catalogid:4907659785700808260,gpcid:7412675826954552636,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.95,
+   "material": "wood, marble",
+   "crop": "crops/i_018.jpg",
+   "views": 6,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_019",
+   "category": "decor",
+   "description": "Calendar hanging on the wall",
+   "brand_model": "",
+   "frame_ref": "frames/000341.jpg#t=114.24",
+   "dimensions_cm": {
+    "w": 14.0,
+    "h": 21.0,
+    "d": 1.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 159.0,
+    "high": 1309.0,
+    "source": "Google Shopping via Serper, query 'paper Calendar hanging on the wall' (3 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=paper+Calendar+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:9705714346920110173,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:55+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=paper+Calendar+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:9705714346920110173,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=paper+Calendar+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:10704005876000389197,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=paper+Calendar+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:1651151803766605012,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.95,
+   "material": "paper",
+   "crop": "crops/i_019.jpg",
+   "views": 2,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_020",
+   "category": "decor",
+   "description": "Round wall clock",
+   "brand_model": "",
+   "frame_ref": "frames/000341.jpg#t=114.24",
+   "dimensions_cm": {
+    "w": 9.0,
+    "h": 17.0,
+    "d": 1.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 1649.0,
+    "high": 4999.0,
+    "source": "Google Shopping via Serper, query 'metal Round wall clock' (10 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:6911990084248982727,gpcid:9182312265482602980,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:55+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:6911990084248982727,gpcid:9182312265482602980,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:8705809300805332476,gpcid:12108379492648625905,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:9138466061674912103,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:2146784712786857324,gpcid:8058716960276010167,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Round+wall+clock&prds=localAnnotatedOfferId:1,catalogid:13461215840414252594,gpcid:9081863390109454448,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.9,
+   "material": "metal",
+   "crop": "crops/i_020.jpg",
+   "views": 4,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_024",
+   "category": "decor",
+   "description": "Ornate silver and gold colored temple or shrine structure hanging on the wall",
+   "brand_model": "",
+   "frame_ref": "frames/000375.jpg#t=124.98",
+   "dimensions_cm": {
+    "w": 101.0,
+    "h": 34.0,
+    "d": 15.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 8874.0,
+    "high": 156821.5,
+    "source": "Google Shopping via Serper, query 'metal Ornate silver and gold colored temple or shrine structure hanging on the wall' (5 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=metal+Ornate+silver+and+gold+colored+temple+or+shrine+structure+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:16714306640612224569,gpcid:13833483726857638415,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:56+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=metal+Ornate+silver+and+gold+colored+temple+or+shrine+structure+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:16714306640612224569,gpcid:13833483726857638415,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Ornate+silver+and+gold+colored+temple+or+shrine+structure+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:3406720539066144517,gpcid:2622744651493547468,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=metal+Ornate+silver+and+gold+colored+temple+or+shrine+structure+hanging+on+the+wall&prds=localAnnotatedOfferId:1,catalogid:416090146475183364,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.76,
+   "material": "metal",
+   "crop": "crops/i_024.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_025",
+   "category": "appliance",
+   "description": "air conditioner mounted on the wall",
+   "brand_model": "",
+   "frame_ref": "frames/000405.jpg#t=135.0",
+   "dimensions_cm": {
+    "w": 52.0,
+    "h": 16.0,
+    "d": 10.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 899.0,
+    "high": 899.0,
+    "source": "Google Shopping via Serper, query 'plastic air conditioner mounted on the wall' (1 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=plastic+a+air+a+conditioner+a+mounted+a+on+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:10596349212407206247,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:56+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=plastic+a+air+a+conditioner+a+mounted+a+on+a+the+a+wall&prds=localAnnotatedOfferId:1,catalogid:10596349212407206247,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.76,
+   "material": "plastic",
+   "crop": "crops/i_025.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_026",
+   "category": "furniture",
+   "description": "Small bedside cabinet or drawer unit with marble-pattern top and two handles",
+   "brand_model": "",
+   "frame_ref": "frames/000420.jpg#t=140.01",
+   "dimensions_cm": {
+    "w": 33.0,
+    "h": 47.0,
+    "d": 24.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 15159.0,
+    "high": 27141.5,
+    "source": "Google Shopping via Serper, query 'wood, metal Small bedside cabinet or drawer unit with marble-pattern top and two handles' (13 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:13633742538710159639,gpcid:1438074593490151957,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:56+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:13633742538710159639,gpcid:1438074593490151957,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:1334623610699549373,gpcid:8685393856386872152,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:12337570470803153933,gpcid:4045974252536186960,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:17765935767806322452,gpcid:4851801387887836074,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood%2C+metal+Small+bedside+cabinet+or+drawer+unit+with+marble-pattern+top+and+two+handles&prds=localAnnotatedOfferId:1,catalogid:7171019202657783535,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.76,
+   "material": "wood, metal",
+   "crop": "crops/i_026.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_030",
+   "category": "decor",
+   "description": "Decorative framed mirror on the wall",
+   "brand_model": "",
+   "frame_ref": "frames/000072.jpg#t=24.11",
+   "dimensions_cm": {
+    "w": 2.0,
+    "h": 16.0,
+    "d": 1.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 1049.5,
+    "high": 11545.0,
+    "source": "Google Shopping via Serper, query 'wood Decorative framed mirror on the wall' (5 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=wood+for+Decorative+for+framed+for+mirror+for+on+for+the+for+wall&prds=localAnnotatedOfferId:1,catalogid:8453502623579972947,gpcid:6732428523196456219,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:58+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=wood+for+Decorative+for+framed+for+mirror+for+on+for+the+for+wall&prds=localAnnotatedOfferId:1,catalogid:8453502623579972947,gpcid:6732428523196456219,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+for+Decorative+for+framed+for+mirror+for+on+for+the+for+wall&prds=localAnnotatedOfferId:1,catalogid:9221368534451175490,gpcid:17973669488989471635,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=wood+for+Decorative+for+framed+for+mirror+for+on+for+the+for+wall&prds=localAnnotatedOfferId:1,catalogid:15305307709271572757,gpcid:17473549058230984574,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.64,
+   "material": "wood",
+   "crop": "crops/i_030.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  },
+  {
+   "id": "i_032",
+   "category": "decor",
+   "description": "Hair clip or small plastic object",
+   "brand_model": "",
+   "frame_ref": "frames/000243.jpg#t=81.05",
+   "dimensions_cm": {
+    "w": 19.0,
+    "h": 1.0,
+    "d": 8.0
+   },
+   "status": "range",
+   "replacement_cost": {
+    "low": 98.25,
+    "high": 153.75,
+    "source": "Google Shopping via Serper, query 'plastic Hair clip or small plastic object' (22 listings)",
+    "url": "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:17461998609701454467,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+    "retrieved_at": "2026-10-10T07:49:57+00:00",
+    "urls": [
+     "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:17461998609701454467,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:1849124894539432555,gpcid:7416621236262094896,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:3613924072835520871,gpcid:8107866180452564467,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:6520369539752297968,gpcid:17242376937261998336,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "https://www.google.com/search?ibp=oshop&q=plastic+Hair+clip+or+small+plastic+object&prds=localAnnotatedOfferId:1,catalogid:4691679177500770286,gpcid:7746780511786631237,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2"
+    ]
+   },
+   "confidence": 0.56,
+   "material": "plastic",
+   "crop": "crops/i_032.jpg",
+   "views": 1,
+   "is_print": null,
+   "notes": []
+  }
+ ],
+ "totals": {
+  "book_count": 13,
+  "books_identified": 13,
+  "books_unidentified": 0,
+  "shelf_run_m": 0.53,
+  "books_replacement_cost": 3595.12,
+  "books_used_value": 409.0,
+  "items_replacement_cost_low": 88439.25,
+  "items_replacement_cost_high": 353566.25,
+  "excluded_from_totals": 0,
+  "books_needs_appraisal": 0,
+  "items_needs_appraisal": 0
+ },
+ "review_queue": [
+  {
+   "ref_id": "items",
+   "reason": "10 item detections showed the printed scale marker and were not counted as items"
+  },
+  {
+   "ref_id": "i_002",
+   "reason": "item line i_016 merged into i_002 by the item check: Bed with patterned bedsheet and Spider-Man headboard."
+  },
+  {
+   "ref_id": "i_004",
+   "reason": "item line i_003 merged into i_004 by the item check: Grey window curtains."
+  },
+  {
+   "ref_id": "i_004",
+   "reason": "item line i_029 merged into i_004 by the item check: Grey window curtains."
+  },
+  {
+   "ref_id": "i_007",
+   "reason": "item line i_017 merged into i_007 by the item check: Wardrobe with graphic print."
+  },
+  {
+   "ref_id": "i_007",
+   "reason": "item line i_027 merged into i_007 by the item check: Wardrobe with graphic print."
+  },
+  {
+   "ref_id": "i_014",
+   "reason": "item line i_008 merged into i_014 by the item check: Patterned pillow."
+  },
+  {
+   "ref_id": "i_010",
+   "reason": "item line i_009 merged into i_010 by the item check: Spider-Man artwork on bed headboard."
+  },
+  {
+   "ref_id": "i_010",
+   "reason": "item line i_015 merged into i_010 by the item check: Spider-Man artwork on bed headboard."
+  },
+  {
+   "ref_id": "i_013",
+   "reason": "item line i_011 merged into i_013 by the item check: Blue bolster pillow."
+  },
+  {
+   "ref_id": "i_018",
+   "reason": "item line i_023 merged into i_018 by the item check: Vanity or desk console with marble top."
+  },
+  {
+   "ref_id": "i_018",
+   "reason": "item line i_028 merged into i_018 by the item check: Vanity or desk console with marble top."
+  },
+  {
+   "ref_id": "items",
+   "reason": "item line i_001 not counted (scale marker) by the item check: Clipboard with printed target calibration pattern used for measurement."
+  },
+  {
+   "ref_id": "items",
+   "reason": "item line i_021 not counted (building fixture) by the item check: Electrical switch board mounted on wall."
+  },
+  {
+   "ref_id": "items",
+   "reason": "item line i_022 not counted (building fixture) by the item check: Electrical switch board with switches."
+  },
+  {
+   "ref_id": "items",
+   "reason": "item line i_031 not counted (scale marker) by the item check: Clipboard holding calibration pattern."
+  },
+  {
+   "ref_id": "room",
+   "reason": "rectangle from the outermost wall planes (some wall segments unseen)"
+  },
+  {
+   "ref_id": "books",
+   "reason": "5 unread spine boxes under 10 cm long not counted as books (pieces of a spine): check the sweep if a small book is missing"
+  },
+  {
+   "ref_id": "books",
+   "reason": "4 unread spine lines not counted: the unit showed fewer spines in one full view than the 3D count"
+  },
+  {
+   "ref_id": "books",
+   "reason": "line b_029 not counted (not a book) by the reconcile check: Not a book crop."
+  },
+  {
+   "ref_id": "b_004",
+   "reason": "replacement price rests on 2 matching listing(s): may not be the market price"
+  },
+  {
+   "ref_id": "b_004",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_005",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_007",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_014",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_016",
+   "reason": "title from vision model only, no OCR support"
+  },
+  {
+   "ref_id": "b_016",
+   "reason": "low identification confidence 0.5"
+  },
+  {
+   "ref_id": "b_016",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_018",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_021",
+   "reason": "low identification confidence 0.612"
+  },
+  {
+   "ref_id": "b_021",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_023",
+   "reason": "replacement price rests on 1 matching listing(s): may not be the market price"
+  },
+  {
+   "ref_id": "b_023",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_024",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "b_027",
+   "reason": "no retrievable used price: excluded from used total"
+  },
+  {
+   "ref_id": "i_002",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_004",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_005",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_006",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_007",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_010",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_012",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_013",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_014",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_018",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_019",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_020",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_024",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_025",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_026",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_030",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_032",
+   "reason": "brand/model not visible: priced as a range of comparable items"
+  },
+  {
+   "ref_id": "i_032",
+   "reason": "low detection confidence 0.56"
+  }
+ ],
+ "excluded_by_user": [],
+ "locale_comparison": {
+  "countries": [
+   "IN",
+   "US"
+  ],
+  "currencies": [
+   "INR",
+   "USD"
+  ],
+  "books": [
+   {
+    "id": "b_004",
+    "title": "Will Grayson, Will Grayson",
+    "IN": {
+     "amount": 259.12,
+     "source": "Google Shopping via Serper: Bookbot.com",
+     "url": "https://www.google.com/search?ibp=oshop&q=Will+Grayson%2C+Will+Grayson+John+Green&prds=localAnnotatedOfferId:1,catalogid:17467226299257396317,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:49:57+00:00",
+     "converted": false,
+     "offers_considered": 2,
+     "listing_title": "Will Grayson, Will Grayson - John Green; David Levithan"
+    },
+    "US": {
+     "amount": 5.05,
+     "source": "Google Shopping via Serper: Book Express",
+     "url": "https://www.google.com/search?ibp=oshop&q=Will+Grayson%2C+Will+Grayson+Green+book&prds=localAnnotatedOfferId:1,catalogid:6242274972583659885,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:09+00:00",
+     "converted": false,
+     "offers_considered": 3,
+     "listing_title": "Will Grayson, Will Grayson, Green"
+    }
+   },
+   {
+    "id": "b_005",
+    "title": "Raavan - Aryavart Ka Shatru (Raavan",
+    "IN": {
+     "amount": 147.0,
+     "source": "Google Shopping via Serper: MyPustak.com",
+     "url": "https://www.google.com/search?ibp=oshop&q=Raavan+-+Aryavart+Ka+Shatru+(Raavan+Amish+Tripathi&prds=localAnnotatedOfferId:1,catalogid:12183215036680001730,gpcid:14070159235506843821,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:07+00:00",
+     "converted": false,
+     "offers_considered": 6,
+     "listing_title": "Raavan : Aryavart Ka Shatru"
+    },
+    "US": {
+     "amount": 8.34,
+     "source": "Google Shopping via Serper: Naresh Book Store",
+     "url": "https://www.google.com/search?ibp=oshop&q=Raavan+-+Aryavart+Ka+Shatru+(Raavan+Amish+Tripathi+paperback&prds=localAnnotatedOfferId:1,catalogid:15403410070842918733,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:23+00:00",
+     "converted": false,
+     "offers_considered": 5,
+     "listing_title": "Raavan - Aryavart Ka Shatru (Raavan by Amish Tripathi"
+    }
+   },
+   {
+    "id": "b_007",
+    "title": "Call Me by Your Name",
+    "IN": {
+     "amount": 410.0,
+     "source": "Google Shopping via Serper: amazon.in",
+     "url": "https://www.google.com/search?ibp=oshop&q=Call+Me+by+Your+Name+Andr%C3%A9+Aciman&prds=localAnnotatedOfferId:1,catalogid:5511535003587506797,gpcid:14699307577614113396,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:49:58+00:00",
+     "converted": false,
+     "offers_considered": 8,
+     "listing_title": "Call Me by Your Name: How a Little Film Touched So Many Lives"
+    },
+    "US": {
+     "amount": 9.42,
+     "source": "Google Shopping via Serper: Target",
+     "url": "https://www.google.com/search?ibp=oshop&q=Call+Me+by+Your+Name+Andr%C3%A9+Aciman+paperback&prds=localAnnotatedOfferId:1,catalogid:9079894271101442955,gpcid:13655428293677057282,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:10+00:00",
+     "converted": false,
+     "offers_considered": 3,
+     "listing_title": "Call Me by Your Name - Aciman"
+    }
+   },
+   {
+    "id": "b_008",
+    "title": "Othello",
+    "IN": {
+     "amount": 135.0,
+     "source": "Google Shopping via Serper: eLocalshop",
+     "url": "https://www.google.com/search?ibp=oshop&q=Othello+William+Shakespeare&prds=localAnnotatedOfferId:1,catalogid:6552121311985422644,gpcid:6284428305921219652,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:00+00:00",
+     "converted": false,
+     "offers_considered": 60,
+     "listing_title": "Othello New"
+    },
+    "US": {
+     "amount": 9.99,
+     "source": "Google Shopping via Serper: Walmart - Go Textbooks",
+     "url": "https://www.google.com/search?ibp=oshop&q=Othello+William+Shakespeare+paperback&prds=localAnnotatedOfferId:1,catalogid:5473789890577840089,gpcid:4361626682880678191,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:12+00:00",
+     "converted": false,
+     "offers_considered": 61,
+     "listing_title": "Othello (Paperback)"
+    }
+   },
+   {
+    "id": "b_014",
+    "title": "Think Like a Monk",
+    "IN": {
+     "amount": 142.0,
+     "source": "Google Shopping via Serper: Meesho",
+     "url": "https://www.google.com/search?ibp=oshop&q=Think+Like+a+Monk+Jay+Shetty+paperback&prds=localAnnotatedOfferId:1,catalogid:5842817649638587989,gpcid:7954267587124578396,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:49:59+00:00",
+     "converted": false,
+     "offers_considered": 3,
+     "listing_title": "Think Like a Monk"
+    },
+    "US": null
+   },
+   {
+    "id": "b_016",
+    "title": "Ikigai",
+    "IN": {
+     "amount": 179.0,
+     "source": "Google Shopping via Serper: Thebookx",
+     "url": "https://www.google.com/search?ibp=oshop&q=Ikigai+Garc%C3%ADa+book&prds=localAnnotatedOfferId:1,catalogid:9560865210902332145,gpcid:11647725355576320653,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:01+00:00",
+     "converted": false,
+     "offers_considered": 9,
+     "listing_title": "Ikigai"
+    },
+    "US": {
+     "amount": 12.97,
+     "source": "Google Shopping via Serper: Walmart",
+     "url": "https://www.google.com/search?ibp=oshop&q=Ikigai+with+Garc%C3%ADa+with+book&prds=localAnnotatedOfferId:1,catalogid:4092925589955218973,gpcid:12985057718369418321,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:14+00:00",
+     "converted": false,
+     "offers_considered": 16,
+     "listing_title": "Ikigai : Find Your Life's True Purpose, Fuel Your Passions, and Live with Joy and Balance Every Day"
+    }
+   },
+   {
+    "id": "b_021",
+    "title": "“The” Vayu Purana",
+    "IN": {
+     "amount": 645.0,
+     "source": "Google Shopping via Serper: amazon.in",
+     "url": "https://www.google.com/search?ibp=oshop&q=%E2%80%9CThe%E2%80%9D+Vayu+Purana&prds=localAnnotatedOfferId:1,catalogid:14165577244120694594,gpcid:4830206896500568000,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:03+00:00",
+     "converted": false,
+     "offers_considered": 18,
+     "listing_title": "Vayu Purana Vol-38 Part-ii"
+    },
+    "US": {
+     "amount": 61.95,
+     "source": "Google Shopping via Serper: Walmart",
+     "url": "https://www.google.com/search?ibp=oshop&q=%E2%80%9CThe%E2%80%9D+of+Vayu+of+Purana&prds=localAnnotatedOfferId:1,catalogid:5635399282194297177,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:14+00:00",
+     "converted": false,
+     "offers_considered": 5,
+     "listing_title": "The Vayu Purana V2, Fasciculus 1-6: A System of Hindu Mythology and Tradition (1881) by Rakemdralala Mitra (Hardcover)"
+    }
+   },
+   {
+    "id": "b_024",
+    "title": "The Oath of the Vayuputras",
+    "IN": {
+     "amount": 229.0,
+     "source": "Google Shopping via Serper: bluediarybooks.com",
+     "url": "https://www.google.com/search?ibp=oshop&q=The+Oath+of+the+Vayuputras+Amish+Tripathi&prds=localAnnotatedOfferId:1,catalogid:8006170829264368568,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:04+00:00",
+     "converted": false,
+     "offers_considered": 8,
+     "listing_title": "Oath of the Vayuputras (The Shiva Trilogy)"
+    },
+    "US": {
+     "amount": 10.0,
+     "source": "Google Shopping via Serper: Audiobooks.com",
+     "url": "https://www.google.com/search?ibp=oshop&q=The+Oath+of+the+Vayuputras+Amish+Tripathi&prds=localAnnotatedOfferId:1,catalogid:10601160254492004811,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:15+00:00",
+     "converted": false,
+     "offers_considered": 7,
+     "listing_title": "Oath Of The Vayuputras"
+    }
+   },
+   {
+    "id": "b_025",
+    "title": "The Wimpy Kid Do-It-Yourself Book",
+    "IN": {
+     "amount": 281.0,
+     "source": "Google Shopping via Serper: Flipkart",
+     "url": "https://www.google.com/search?ibp=oshop&q=The+Wimpy+Kid+Do-It-Yourself+Book+Jeff+Kinney&prds=localAnnotatedOfferId:1,catalogid:9774539179635031782,gpcid:17299506185870580194,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:06+00:00",
+     "converted": false,
+     "offers_considered": 10,
+     "listing_title": "Diary Of A Wimpy Kid: Do-it-yourself Book"
+    },
+    "US": {
+     "amount": 9.48,
+     "source": "Google Shopping via Serper: Walmart",
+     "url": "https://www.google.com/search?ibp=oshop&q=The+Wimpy+Kid+Do-It-Yourself+Book+Kinney+book&prds=localAnnotatedOfferId:1,catalogid:14940002625434244563,gpcid:10790794936800566209,pvo:2,pvt:hg&gl=us&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:17+00:00",
+     "converted": false,
+     "offers_considered": 5,
+     "listing_title": "The Wimpy Kid Do-It-Yourself Book"
+    }
+   },
+   {
+    "id": "b_026",
+    "title": "Tom Gates: Family, Friends and Furry Creatures",
+    "IN": {
+     "amount": 280.0,
+     "source": "Google Shopping via Serper: The Bookworm",
+     "url": "https://www.google.com/search?ibp=oshop&q=Tom+Gates%3A+Family%2C+Friends+and+Furry+Creatures+Pichon+book&prds=localAnnotatedOfferId:1,catalogid:14961491155722654734,gpcid:16013816164039060698,pvo:2,pvt:hg&gl=in&udm=28&pvorigin=2",
+     "retrieved_at": "2026-10-10T07:50:08+00:00",
+     "converted": false,
+     "offers_considered": 4,
+     "listing_title": "Tom Gates #12: Family Friends And Furry Creatures"
+    },
+    "US": null
+   }
+  ]
+ },
+ "metrics": {
+  "latency_s": {
+   "recon": 88.63,
+   "geometry": 20.89,
+   "ocr": 40.19,
+   "items": 27.66,
+   "books": 94.5,
+   "checker": 16.55,
+   "pricing": 60.34,
+   "packet": 0.0,
+   "keyframes": 0.0,
+   "reads": 0.07,
+   "spines": 56.3
+  },
+  "tokens": {
+   "drex": {
+    "in": 107284,
+    "out": 0
+   },
+   "gemini-3.8-live": {
+    "in": 267667,
+    "out": 2892
+   },
+   "gemini-3.8-flash": {
+    "in": 19129,
+    "out": 1536
+   },
+   "gemini-3.5-flash-lite": {
+    "in": 161358,
+    "out": 34064
+   }
+  },
+  "counters": {
+   "drex_calls": 82,
+   "ocr_crops": 42,
+   "ocr_seconds": 40.1915847399996,
+   "vision_fallbacks": 1,
+   "vision_retries": 12,
+   "serper_queries": 106,
+   "sam_images": 187,
+   "sam_seconds": 441.09830272500585,
+   "gpu_seconds": 72.64584670699878,
+   "http_retries:google.serper.dev": 5
+  },
+  "cost_usd": {
+   "drex": 0.0536,
+   "gemini-3.8-live": 0.8377,
+   "gemini-3.8-flash": 0.0201,
+   "gemini-3.5-flash-lite": 0.1336,
+   "serper": 0.106,
+   "gpu": 0.0392,
+   "ocr": 0.004,
+   "sam": 0.0
+  },
+  "cost_usd_total": 1.1942,
+  "keyframes": 187,
+  "time_to_packet_s": 243.7
+ }
+}
