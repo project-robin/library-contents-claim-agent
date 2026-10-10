@@ -18,8 +18,7 @@ Runs that missed are reported next to the ones that passed.
 | Time to packet | < 300 s | live 225.5 s (sweep 3996) and 243.7 s (demo 5ced) | **pass** |
 
 What differs from the brief's required capture, and why: the tester's home has 12 books in the bedroom and 21 in all
-(not ≥60 on ≥2 units); the room dimensions are the builder's 10 × 10 × 10 ft, because no tape measure was available
-(the tester was in quarantine); 12 spines were measured and 12 prices checked by hand (not 20 and 15).
+(not ≥60 on ≥2 units); the room dimensions are the builder's 10 × 10 × 10 ft, because no tape measure was available; 12 spines were measured and 12 prices checked by hand (not 20 and 15).
 
 ## Real home sweeps (a tester's room, phone, live agent)
 
