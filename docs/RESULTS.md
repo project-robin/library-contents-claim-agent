@@ -4,21 +4,22 @@ Every number below comes from a saved sweep and can be rerun:
 `uv run python -m eval.score sweeps/<id>/claim_packet.json ground_truth/<set>/ --md`.
 Runs that missed are reported next to the ones that passed.
 
-## Where each pass bar stands (2026-10-09)
+## Where each pass bar stands (2026-10-10)
 
-| Measure | Pass bar | Best evidence so far | Status |
+| Measure | Pass bar | Best evidence | Status |
 |---|---|---|---|
-| Book count | within 5% | Real home, current code, 12 runs on 4 sweeps: 5 within 5%. Bed (12 books): 12–18. Shelf + stack (21): 19–20 | **partial**: passes on 3 of 4 sweeps at least once, never on the first bed sweep |
-| Title identification | ≥70% correct, ≤3% confidently wrong | Bed 12/12 on every run; shelf + stack 16–17/21 (76–81%); 0 confidently wrong except one duplicate line with a catalogue title (below) | **pass** on real sweeps |
-| Spine dimensions | within 15% (20 spines) | no hand-measured spines yet | open |
-| Book prices | within 25% (15 books) | no hand-checked prices yet; earlier stability check 11/12 within 25% | open |
-| Non-book items | ≥80% found, correct category | no item list yet | open |
-| Floor area | within 10% | no tape measurement; the system gave 5.76, 7.86 and 10.5 m² on three sweeps of one room, and nothing on two | open, **likely fail** |
-| Wall area | within 15% | as floor area | open, **likely fail** |
-| Time to packet | < 300 s | live 418 s and 589 s; with today's speed-ups, about 285 s projected, not yet measured live | **fail until measured** |
+| Book count | within 5% | Demo sweep 5ced (12 books): live packet 13; current code 12, 12, 12. Earlier sweeps, current code: bed 194203 12; shelf + stack 203017 20 and 21 (truth 21) | **pass** on current code; the live demo packet missed by one line |
+| Title identification | ≥70% correct, ≤3% confidently wrong | Demo: live 11/12 with 1 wrong edition title; current code 12/12, 0 wrong (3 runs). Shelf + stack 17/21, 0 wrong | **pass** on current code |
+| Spine dimensions | within 15% | 12 spines hand-measured: mean error 30–32% | **fail** (thickness too big: axis-aligned boxes) |
+| Book prices | within 25% | 12 hand-checked Amazon.in prices: median error 22–23%, 58–73% within 25% | **pass** on the median (the bar does not say median or each) |
+| Non-book items | ≥80% found, correct category | 14 items listed by the tester: 11/14 live, 9/14 on a rerun | **fail** (fan and ceiling lights never found) |
+| Floor area | within 10% | 9.14 vs 9.29 m² (1.6%) | **pass**, against the builder's 10 × 10 ft (not tape) |
+| Wall area | within 15% | 29.1 vs 37.2 m² (21.6%) | **fail** against the builder's 10 ft height: the system measured 2.40 m |
+| Time to packet | < 300 s | live 225.5 s (sweep 3996) and 243.7 s (demo 5ced) | **pass** |
 
-The required capture (≥60 books on ≥2 shelving units, ≥8 items, one enclosed room, tape-measured) is the demo sweep
-still to be filmed. Its table is at the end.
+What differs from the brief's required capture, and why: the tester's home has 12 books in the bedroom and 21 in all
+(not ≥60 on ≥2 units); the room dimensions are the builder's 10 × 10 × 10 ft, because no tape measure was available
+(the tester was in quarantine); 12 spines were measured and 12 prices checked by hand (not 20 and 15).
 
 ## Real home sweeps (a tester's room, phone, live agent)
 
@@ -77,24 +78,36 @@ no text, 1 resolved to a different Poirot title (flagged).
 
 | Item | Value | Where |
 |---|---|---|
-| True book count | bed 12; shelf + stack 21; demo room: to do | `ground_truth/home-*/books.csv` |
+| True book count | bedroom 12; shelf + stack 21 | `ground_truth/home-*/books.csv` |
 | Hand-read titles | 12 + 21 | same |
-| Hand-measured spines (20) | to do | `ground_truth/spines.csv` |
-| Hand-checked prices (15) | to do | `ground_truth/prices.csv` |
-| Non-book items | to do | `ground_truth/items.csv` |
-| Room (L × W × H, tape) | to do | `ground_truth/room.csv` |
+| Spines measured by the tester with a ruler | 12 (height and thickness) | `ground_truth/home-bed/spines.csv` |
+| Prices checked by the tester on Amazon.in | 12 (2026-10-10) | `ground_truth/home-bed/prices.csv` |
+| Non-book items listed by the tester | 14 | `ground_truth/home-bed/items.csv` |
+| Room L × W × H | 3.048 × 3.048 × 3.048 m, the builder's figure, **not tape-measured** | `ground_truth/home-bed/room.csv` |
 
-## System vs pass bars: demo sweep `<id>` (the one in the video)
+## System vs pass bars: demo sweep `20261010-131406-5ced` (the one in the video)
 
-To fill from `eval.score` once the demo room's ground truth is in `ground_truth/`.
+The tester's bedroom, live agent, 154 s sweep, India / INR. Ground truth `ground_truth/home-bed/`.
+"Live packet" is what the phone received. "Current code" is the same saved sweep rerun from the books stage after
+the fixes it prompted (commits e0d15dd, f7762f1); geometry and recon are unchanged.
 
-| Measure | Pass bar | Result | Pass |
-|---|---|---|---|
-| Book count | within 5% | | |
-| Title identification | ≥70% correct, ≤3% confidently wrong | | |
-| Spine dimensions | within 15% (20 spines) | | |
-| Book prices | within 25% (15 books) | | |
-| Non-book items | ≥80% found, correct category | | |
-| Floor area | within 10% | | |
-| Wall area | within 15% | | |
-| Time to packet | < 5 min | | |
+| Measure | Pass bar | Live packet | Pass | Current code (rerun) | Pass |
+|---|---|---|---|---|---|
+| Book count | within 5% | 13 vs 12 (8.3%) | ❌ | 12 vs 12, three runs | ✅ |
+| Title identification | ≥70% correct, ≤3% confidently wrong | 11/12; 1/11 wrong (Raavan under its Hindi edition title) | ❌ | 12/12; 0 wrong | ✅ |
+| Spine dimensions | within 15% (12 spines) | mean 32.0%; 45% within 15% | ❌ | mean 29.7%; 50% within 15% | ❌ |
+| Book prices | within 25% (12 books) | median 21.7%; 73% within 25%; 11/12 priced | ✅ | median 21.8%; 70% within 25%; 10/12 priced | ✅ |
+| Non-book items | ≥80% found, correct category | 11/14 (79%) | ❌ | 9/14 | ❌ |
+| Floor area | within 10% | 9.14 vs 9.29 m² (1.6%) | ✅ | same | ✅ |
+| Wall area | within 15% | 29.12 vs 37.16 m² (21.6%) | ❌ | same | ❌ |
+| Time to packet | < 5 min | 243.7 s | ✅ | (live only) | |
+
+- Room: 3.24 × 2.82 m measured vs the builder's 3.05 × 3.05 m (6–8%); height 2.40 m vs 3.05 m. Floor area agrees,
+  so the scale is right; whether the builder's 10 ft is the ceiling height or floor to floor could not be checked.
+- Items: matched by category count, as in `eval/score.py`. Found: bed, bedsheet, wardrobe, pillows, bolster, temple,
+  clock, AC, marble-top table, dressing table. Never found: ceiling fan, ceiling lights, folded hoodie, baby photo.
+  The packet also lists items not on the tester's list (Spider-Man art on the headboard, which the tester confirmed
+  as a print during the sweep; curtain; calendar), and three lines for one bedsheet.
+- Cost of this sweep: $1.19 at list prices (Gemini Live $0.84).
+- An earlier attempt the same day (`20261010-131310-d3d6`) ended after 5 s: the agent called end_sweep by itself.
+  The server now refuses that before the user has spoken or before 30 s (commit 2b38fa3).

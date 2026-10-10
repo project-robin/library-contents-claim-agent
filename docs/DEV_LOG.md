@@ -219,3 +219,29 @@ Four fixes from that run:
    says so.
 4. **The mic stayed on after the sweep** and the agent answered the room's background talk. The phone stops the mic
    at End sweep; typing still works.
+
+## 2026-10-10: demo sweeps in the tester's bedroom
+
+The first demo attempt (`003957-3996`) was filmed in another part of the home (the shelf books and other furniture),
+so it could not be scored against the bedroom's list; it did give the first live time to packet under 300 s (225.5 s).
+The tester then repeated the bedroom.
+
+1. **The agent ended a sweep by itself 5 s in** (`131310-d3d6`): it greeted, then called end_sweep before the user
+   said anything. The server refuses end_sweep before the user has spoken or before 30 s; the End button is
+   unchanged. It also asked about a portrait after the sweep had ended (a frame read still in flight); art questions
+   now stop at end_sweep.
+2. **Demo sweep `131406-5ced`:** time to packet 243.7 s; floor 9.14 vs 9.29 m² (builder's figure); 13 lines for 12
+   books, one of them Raavan under its Hindi edition title.
+   - Editions of one work tie on DREX's P(same work) (0.9805 Hindi vs 0.958 English). Among candidates within 0.05
+     of the best, the title closest to the spine read now wins.
+   - A half-spine read 'THE OAT THE VAYUI' resolved to 'The Vayu Purana' next to The Oath of the Vayuputras. A read
+     that fits a neighbour's title (≥ 0.6, and 0.2 better than its own) is folded into it.
+   - Reruns then gave 12, 13, 14 lines: a second box 1.3 cm along the flat Othello spine (the piece test measured
+     flat spines on the wrong axes), the crop reader's 'William Shakespeare's Othello', and garbled reads no
+     catalogue matched ('TOM GATES FAMI FURR', 'WILLIAM SHAKESPEARE'). The piece rules now cover unidentified lines
+     with a read, flat pieces along the spine, and a crop-reader title that starts or ends a neighbour's.
+   - The first version of these rules dropped the shelf sweep from 20 to 17 lines: Exam Warriors, named in Marathi,
+     had folded into The Ship of Secrets (a Devanagari title scores 0 against any read), and two upright boxes into
+     flat books. Fixed by requiring a Latin title, an absolute match, and the same orientation.
+   - Reruns from books: demo 12, 12, 12 (truth 12); bed 194203 12; shelf 203017 20, 21 (truth 21). Titles
+     unchanged, 0 confidently wrong.
