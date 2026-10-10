@@ -268,6 +268,28 @@ def test_same_book_joins_pieces_of_one_identified_spine():
     assert full["views"] == 38 + 5 + 5 + 5
 
 
+def test_same_book_folds_a_half_read_resolved_to_another_work():
+    """Demo sweep 5ced: a half-spine box read 'THE OAT THE VAYUI' resolved to 'The Vayu Purana' and became a 13th
+    book next to The Oath of the Vayuputras. A read that fits the neighbour's title better is part of it; a nearby book
+    whose read fits its own title stays."""
+    oath = _bk("The Oath of the Vayuputras", (0.13, 0.40, 0.57), h=18, ori="flat", views=53)
+    half = _bk("The Vayu Purana", (0.15, 0.45, 0.63), h=10, ori="flat", views=4, read="THE OAT THE VAYUI")
+    sita = _bk("Sita", (0.14, 0.42, 0.60), ori="flat", read="SITA WARRIOR OF MITHILA")
+    out, folded, _ = books.same_book([oath, half, sita])
+    assert out == [oath, sita] and folded == 1 and oath["views"] == 57
+
+
+def test_pick_prefers_the_closest_edition_title_among_near_ties():
+    """Demo sweep 5ced: an English spine got the Hindi edition's catalogue title at P 0.9805 vs 0.958 for the English
+    one. Near-ties go to the title closest to the read; a clearly better probability still wins."""
+    cands = [{"title": "Raavan", "subtitle": "Enemy of Aryavarta", "authors": ["Amish"]},
+             {"title": "Raavan - Aryavart Ka Shatru (Raavan", "subtitle": "Enemy of Aryavarta)", "authors": ["Amish Tripathi"]}]
+    cand, conf, _ = books.pick("RAAVAN ENEMY OF ARYAVARTA", "AMISH", {"cands": cands, "probs": {"c0": 0.958, "c1": 0.9805}})
+    assert cand is cands[0] and conf == 0.958
+    cand, _, _ = books.pick("RAAVAN ENEMY OF ARYAVARTA", "AMISH", {"cands": cands, "probs": {"c0": 0.6, "c1": 0.98}})
+    assert cand is cands[1]
+
+
 def test_frame_cap_drops_only_unread_lines_above_one_full_view():
     """Gemini saw 6 spines in a frame showing the whole unit; 3D held 4 identified + 1 weak title + 3 unread. Two
     unread lines go (weakest candidate, then fewest views); the weak title stays. Without a full view nothing is dropped."""

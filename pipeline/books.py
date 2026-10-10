@@ -256,6 +256,11 @@ def same_book(books):
         unread = not b["title"] and not b["spine_text"]["title"]
         k = next((k for k in live if b["title"] and same_work(b["title"], k["title"]) and volumes_agree(k, b)
                   and near(k, b, True)), None)
+        read = b["spine_text"]["title"]
+        if k is None and b["title"] and titled(read):
+            # a half-spine read ('THE OAT THE VAYUI') resolved to another work ('The Vayu Purana') next to the book it
+            # is part of: the read fits the neighbour's title better than its own (sweep 5ced)
+            k = next((k for k in live if near(k, b, True) and sim(read, k["title"]) >= sim(read, b["title"]) + 0.2), None)
         if unread:
             k = next((k for k in live if near(k, b, False)), None)
             named = [k for k in live if near(k, b, True) and supports(f"{k['title']} {k['author']}", tokens(b["ocr_text"]))]
@@ -504,7 +509,11 @@ def pick(title, author, entry):
         return None, 0.0, False
     if author_only(title, author, cands):
         return None, 0.0, True
-    i = max(range(len(cands)), key=lambda i: probs.get(f"c{i}", 0))
+    best = max(probs.get(f"c{i}", 0) for i in range(len(cands)))
+    # editions of one work tie on P(same work): sweep 5ced read 'RAAVAN ENEMY OF ARYAVARTA' and got the Hindi edition
+    # 'Raavan - Aryavart Ka Shatru' at 0.9805 over the English one at 0.958. Among near-ties, the closest title wins.
+    near = [i for i in range(len(cands)) if probs.get(f"c{i}", 0) >= best - 0.05]
+    i = max(near, key=lambda i: (score(title, author, 1.0, cands[i]), probs.get(f"c{i}", 0)))
     return cands[i], round(probs.get(f"c{i}", 0.0), 3), False
 
 
