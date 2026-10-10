@@ -108,6 +108,9 @@ the fixes it prompted (commits e0d15dd, f7762f1); geometry and recon are unchang
   clock, AC, marble-top table, dressing table. Never found: ceiling fan, ceiling lights, folded hoodie, baby photo.
   The packet also lists items not on the tester's list (Spider-Man art on the headboard, which the tester confirmed
   as a print during the sweep; curtain; calendar), and three lines for one bedsheet.
+- Demo video: one unedited phone screen recording, 8 min 12 s, from before Start to the saved PDF. Sweep starts
+  0:06, the user ends it at 2:40, the packet arrives at 6:44 (243.7 s later) and the agent reads its summary; the
+  report is opened at about 7:10. The PDF the tester saved shows the live packet (13 books).
 - Cost of this sweep: $1.19 at list prices (Gemini Live $0.84).
 - An earlier attempt the same day (`20261010-131310-d3d6`) ended after 5 s: the agent called end_sweep by itself.
   The server now refuses that before the user has spoken or before 30 s (commit 2b38fa3).
