@@ -14,6 +14,10 @@ close-up shelf photos. Everything tried along the way, with numbers: [DEV_LOG.md
 Other errors found and fixed: on the first voice sweep (DEV_LOG, sweep 230330) 36 item lines for one bedroom (one bed as 5 lines, the marker card as 'art', sockets) → 17–20, and time to packet 308.8 s with pricing at 145 s (fallback markets and the comparison now overlap: 105 → 77 s on a replay); wrong-edition price matches (a Kannada, Hindi, Czech or Gujarati edition, a different
 series volume, a 4-book set) and no used price for any book (DEV_LOG, 2026-10-09); the agent hearing itself on the
 phone's loudspeaker and looping on "which currency?" (now typed replies, or voice with headphones).
+**The agent spoke late** on the demo sweep ('step closer to this row' about rows already left). Gemini Live itself
+answered in under 1 s; the delay was the side reader: frame reads came back 18.6 s late on median (up to 67 s) and
+were passed to the agent. Now a message from a frame more than 4 s old is not told to the agent, the agent coaches and
+asks about art from what it sees itself, and the wall turn is part of its instructions.
 Found on the demo sweep and fixed: the agent ended one attempt by itself 5 s in (end_sweep now refused before the user
 speaks or 30 s); Raavan named by its Hindi edition (near-tie editions go to the closest title); a half-spine read
 'THE OAT THE VAYUI' resolved to 'The Vayu Purana' as a 13th book (folded into its neighbour).
@@ -51,5 +55,8 @@ Gemini Live is 63–84% of the cost (70% on the demo): one video frame a second 
   error 1 at its source instead of after the fact.
 - Ask reconcile twice and apply only what both answers agree on, so its result is stable between runs.
 - Start recon and SAM on keyframes during the sweep, not after it: they are 170 s of the remaining budget.
+- More from Live function calling: `capture_closeup` (the phone takes a full-resolution still when the agent sees a
+  hard spine), `start_unit` / `start_walls` (the agent marks shelf units and the room pass for the pipeline), and
+  non-blocking tools whose answers arrive when the agent is idle. A faster live reader (Flash-Lite, no thinking).
 - Android WebXR/ARCore depth and poses as a second metric source (no marker needed).
 - Condition grading per spine feeding the used value; door and window detection for net wall area.

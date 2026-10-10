@@ -1,4 +1,5 @@
 """Non-book contents: per-frame item detections -> one line per physical object with 3D dimensions."""
+import re
 from collections import Counter
 
 import cv2
@@ -7,8 +8,27 @@ import numpy as np
 from pipeline import geometry, reconcile
 from pipeline.books import crop, frame_times, load_notes, nearest_det
 
+# generic words in art descriptions; the rest ('spiderman', 'headboard') tell one piece from another
+ART_WORDS = {"art", "artwork", "painting", "poster", "canvas", "print", "framed", "frame", "picture", "photo",
+             "photograph", "wall", "panel", "above", "small", "large", "hanging", "leaning", "against"}
 MARKER_SHARE = 0.08  # a box whose area is at least 8% marker is the marker card (or its clipboard), not an item
 
+
+
+def _words(t):
+    return {w for w in re.sub(r"[^a-z ]", "", t.lower()).split() if len(w) >= 4 and w not in ART_WORDS}
+
+
+def art_for(note, clusters, det_to_c, reads, times):
+    """set_item_fact by description: the agent asked about art it saw itself, before any frame read named it. The art
+    line sharing a distinctive word with the description, else the item seen nearest in time if it is art."""
+    want = _words(note.get("description", ""))
+    overlap = lambda c: max(len(want & _words(m["description"])) for m in c["members"])
+    best = max((c for c in clusters if c["category"] == "art"), key=overlap, default=None)
+    if best and overlap(best):
+        return best
+    c = det_to_c.get(nearest_det(reads, times, note["t"], "items"))
+    return c if c and c["category"] == "art" else None
 
 def shows_marker(sweep_dir, frame, box_2d, cache, det):
     """The live sweep listed the printed scale marker twice as art ('framed artwork depicting a black and white
@@ -58,10 +78,13 @@ def run(sweep_dir, reads, geo):
             clusters.append({"category": d["category"], "center": d["center"], "members": [d]})
 
     det_to_c = {m["id"]: c for c in clusters for m in c["members"]}
-    unmatched = []
+    unmatched, facts_unmatched = [], 0
     for note in load_notes(sweep_dir):
         if note["kind"] in ("fact", "removed"):  # set_item_fact / remove_item, anchored to the live detection id
             c = det_to_c.get(note.get("det_id"))
+            if not c and note["kind"] == "fact" and not note.get("det_id"):
+                c = art_for(note, clusters, det_to_c, reads, times)
+                facts_unmatched += c is None
             if not c and note["kind"] == "removed":
                 unmatched.append(note)
         elif note["kind"] == "note" and note.get("target") == "item":
@@ -108,5 +131,6 @@ def run(sweep_dir, reads, geo):
                                       "detections_without_3d": sum("center" not in d for d in dets),
                                       "shelved_wall_area_m2": round(shelved_wall, 2) if shelving else None,
                                       "marker_detections_dropped": marker_dets, "removed_by_user": removed,
+                                      "art_facts_without_a_line": facts_unmatched,
                                       "reconciled": [{"id": i, "action": k, "into": into, "reason": r}
                                                      for i, k, into, r in rec]}}

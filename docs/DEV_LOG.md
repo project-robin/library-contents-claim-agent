@@ -245,3 +245,15 @@ The tester then repeated the bedroom.
      flat books. Fixed by requiring a Latin title, an absolute match, and the same orientation.
    - Reruns from books: demo 12, 12, 12 (truth 12); bed 194203 12; shelf 203017 20, 21 (truth 21). Titles
      unchanged, 0 confidently wrong.
+3. **The agent spoke about things already out of view.** In the demo video it asked to "step closer to this row"
+   after the user had moved on, and said "you've moved away from the books" during the wall turn. Gemini Live itself
+   was fast (a spoken "print" became a tool call in 0.8 s). The lag came from the side reader: every 3 s a keyframe
+   goes to a Gemini Flash read of spines and items, and its answers came back 18.6 s after the frame on median (p90
+   59 s, max 67 s); unreadable-spine warnings and art questions were forwarded from those reads. Now:
+   - a monitor message from a frame more than 4 s old is dropped and counted (`monitor_stale_dropped` in sweep.json);
+     the reads still feed the inventory and the packet;
+   - the agent coaches from the video it sees (spines small, blurry or slanted) and talks only about the current view;
+   - the wall turn, floor and ceiling corner are in its instructions, so it does not send the user back to the books;
+   - it asks "original or print?" about art it sees, and `set_item_fact` takes a description; the items stage gives
+     the answer to the art line sharing a distinctive word. A later frame read of the same piece does not ask again.
+   Checked on a real Live session: told about a framed Spider-Man print, it called set_item_fact with a description.

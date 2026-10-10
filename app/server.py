@@ -21,6 +21,7 @@ from app import live
 from pipeline import frames, metrics, settings, vision
 from pipeline import run as pipeline
 from pipeline.books import norm
+from pipeline.items import ART_WORDS
 
 log = logging.getLogger("sweep")
 PHONE_SILENT_S = 30  # ponytail: fixed; the mic sends every 0.1 s, so 30 s of nothing is a frozen or gone phone
@@ -67,8 +68,9 @@ def warm_ocr():
 
 ART_GAP_S = 20  # at most one "original or print?" question per this many seconds
 MIN_SWEEP_S = 30  # end_sweep from the agent is refused before this, or before the user has said anything
-ART_WORDS = {"art", "artwork", "painting", "poster", "canvas", "print", "framed", "frame", "picture", "photo",
-             "photograph", "wall", "panel", "above", "small", "large", "hanging", "leaning", "against"}
+# demo sweep 5ced: frame reads came back 18.6 s late on median (up to 67 s), and the agent said 'step closer to this
+# row' about rows the user had left. A message from a frame older than this is not told to the agent.
+STALE_S = 4.0
 
 
 def art_key(desc):
@@ -90,6 +92,7 @@ class Session:
         self.books, self.items, self.unreadable_now = {}, [], 0
         self.last_item_t = {}
         self.art_asked, self.last_art_t = [], -1e9
+        self.stale_dropped = 0
         self.user_spoke = False  # set_locale needs a user answer: on a silent replay the agent set IN by itself
 
     # ---------- plumbing ----------
@@ -110,8 +113,13 @@ class Session:
         except Exception:
             pass
 
-    async def monitor(self, text, force=False):
-        """Tell the agent about capture problems. Rate-limited so it does not nag."""
+    async def monitor(self, text, force=False, frame_t=None):
+        """Tell the agent about capture problems. Rate-limited so it does not nag. frame_t: when the frame behind the
+        message was taken; a stale one is dropped (the user has moved on)."""
+        if frame_t is not None and self.now() - frame_t > STALE_S:
+            self.stale_dropped += 1
+            log.info("stale monitor dropped (frame %.1f s old): %s", self.now() - frame_t, text[:80])
+            return
         if not self.live or (not force and (self.ended or time.time() - self.last_nudge < 6)):
             return
         self.last_nudge = time.time()
@@ -277,7 +285,7 @@ class Session:
             await self.monitor(NUDGES[q["issue"]])
         if key and t - self.last_read_t >= settings.READ_GAP_S:
             self.last_read_t = t
-            task = asyncio.create_task(self.read(name, jpeg))
+            task = asyncio.create_task(self.read(name, jpeg, t))
             self.read_tasks.add(task)
             task.add_done_callback(self.read_tasks.discard)
         if self.live and t - self.last_live_frame >= 1.0:  # Live API takes ~1 fps
@@ -290,7 +298,7 @@ class Session:
             except Exception:
                 pass
 
-    async def read(self, name, jpeg):
+    async def read(self, name, jpeg, frame_t=None):
         """Live spine/item read on a keyframe. Saved, so the post-sweep pipeline does not redo it."""
         async with self.read_sem:
             try:
@@ -308,7 +316,7 @@ class Session:
         self.unreadable_now = unreadable
         if unreadable >= 3 and unreadable >= 0.4 * len(spines):
             await self.monitor(f"{unreadable} of {len(spines)} spines in view are unreadable: ask the user to step "
-                               "closer to this row and hold still for a moment")
+                               "closer to this row and hold still for a moment", frame_t=frame_t)
         for k, it in enumerate(r["items"]):
             if t - self.last_item_t.get(it["category"], -99) < 3:  # ponytail: provisional live dedup only
                 continue
@@ -325,7 +333,7 @@ class Session:
                                "det_id": f"{name}:{k}"})
             if it["category"] == "art" and not self.ended:  # sweep 5ced: asked about a portrait after end_sweep, mic off
                 await self.monitor(f"New item {iid}: {it['description']}. Ask whether it is an original or a print, "
-                                   f"then call set_item_fact with item_id {iid}.", force=True)
+                                   f"then call set_item_fact with item_id {iid}.", force=True, frame_t=frame_t)
         await self.send_json({"type": "inventory", "books": list(self.books.values()),
                               "items": self.items, "unreadable_now": self.unreadable_now})
 
@@ -348,11 +356,16 @@ class Session:
         elif name == "exclude_shelf":
             self.note(kind="exclude", text=a.get("reason", ""), target="book")
         elif name == "set_item_fact":
+            # the agent asks about art it sees itself, by description: the frame reads that give item ids arrive late
             it = next((i for i in self.items if i["id"] == a.get("item_id")), None)
             if it:
                 self.note(kind="fact", det_id=it["det_id"], is_print=bool(a.get("is_print")), item_id=it["id"])
+            elif a.get("description"):
+                self.note(kind="fact", is_print=bool(a.get("is_print")), description=a["description"])
+                self.art_asked.append(art_key(a["description"]))  # the late frame read does not ask again
+                self.last_art_t = self.now()
             else:
-                res = {"ok": False, "error": "unknown item id"}
+                res = {"ok": False, "error": "give an item id from a monitor message or a short description"}
         elif name == "remove_item":
             # the user said 'there is no photograph on the wall' twice and the agent could only apologise: the
             # phantom art stayed in the packet as needs-appraisal
@@ -388,7 +401,7 @@ class Session:
         if self.ended:
             return
         self.ended = True
-        self.sweep_update(t_end_epoch=time.time(), duration_s=self.now())
+        self.sweep_update(t_end_epoch=time.time(), duration_s=self.now(), monitor_stale_dropped=self.stale_dropped)
         await self.send_json({"type": "status", "text": "Sweep ended. Building the claim packet..."})
         if self.read_tasks:
             await asyncio.gather(*self.read_tasks, return_exceptions=True)

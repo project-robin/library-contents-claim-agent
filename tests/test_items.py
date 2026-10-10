@@ -64,3 +64,15 @@ def test_bedding_is_never_folded_into_the_bed_and_the_bed_is_the_line_kept():
     kept, acts = reconcile.apply_items(lines, ans)
     assert [i["id"] for i in kept] == ["i_001", "i_002", "i_004"]
     assert acts == [("i_003", "merged", "i_002", "the bed with its bedding")]
+
+
+def test_art_fact_by_description_finds_its_line():
+    """set_item_fact without an item id (the agent asked about art it saw itself): the art line sharing a distinctive
+    word takes the answer; generic words ('painting', 'framed') do not match; no art line, no match."""
+    spidey = {"category": "art", "members": [{"description": "Spider-Man artwork on headboard"}]}
+    portrait = {"category": "art", "members": [{"description": "small framed portrait on a high shelf"}]}
+    bed = {"category": "furniture", "members": [{"description": "bed with headboard"}]}
+    note = {"t": 50.0, "description": "Spider-Man painting on the headboard"}
+    assert items.art_for(note, [bed, portrait, spidey], {}, {}, {}) is spidey
+    assert items.art_for({"t": 50.0, "description": "framed painting"}, [bed, portrait, spidey], {}, {}, {}) is None
+    assert items.art_for(note, [bed], {}, {}, {}) is None

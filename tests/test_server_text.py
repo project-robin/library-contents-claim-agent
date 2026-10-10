@@ -83,3 +83,38 @@ def test_user_can_remove_an_item_that_is_not_there(tmp_path):
     assert [i["id"] for i in s.items] == ["i1"]
     assert notes[1]["det_id"] is None and notes[1]["description"] == "abstract art"  # kept for the review queue
     assert s.live.tool_responses[0].response["removed"] == "i2"
+
+
+def test_a_read_of_an_old_frame_is_not_told_to_the_agent(tmp_path, monkeypatch):
+    """Demo sweep 5ced: frame reads came back 18.6 s late on median and the agent said 'step closer to this row' about
+    rows the user had left. A message from a frame older than STALE_S is dropped and counted; a fresh one goes."""
+    from pipeline import vision
+    monkeypatch.setattr(vision, "read_frame", lambda jpeg: {"issue": "none", "items": [], "spines": [
+        {"legibility": "none", "title": "", "author": ""}] * 4})
+    s = server.Session(FakeWS([]))
+    s.live, s.dir = FakeLive(), tmp_path
+    (tmp_path / "reads").mkdir()
+    s.now = lambda: 30.0
+    asyncio.run(s.read("000001.jpg", b"x", frame_t=10.0))  # 20 s old
+    assert s.live.texts == [] and s.stale_dropped == 1
+    asyncio.run(s.read("000002.jpg", b"x", frame_t=28.0))
+    assert len(s.live.texts) == 1 and "unreadable" in s.live.texts[0]
+
+
+def test_agent_records_art_it_sees_by_description_and_the_late_read_does_not_ask_again(tmp_path, monkeypatch):
+    """The agent asks 'original or print?' about art in view itself (no item id yet); the frame read that names the
+    same piece later does not ask a second time."""
+    from pipeline import vision
+    monkeypatch.setattr(vision, "read_frame", lambda jpeg: {"spines": [], "issue": "none", "items": [
+        {"category": "art", "description": "Spider-Man artwork on headboard", "material": "", "brand_model": "",
+         "dimensions_cm": ""}]})
+    s = server.Session(FakeWS([]))
+    s.live, s.dir, s.t0 = FakeLive(), tmp_path, 0.0
+    (tmp_path / "reads").mkdir()
+    s.now = lambda: 40.0
+    asyncio.run(s.tool(SimpleNamespace(args={"description": "Spider-Man painting on the headboard", "is_print": True},
+                                       name="set_item_fact", id="1")))
+    note = json.loads((tmp_path / "notes.jsonl").read_text())
+    assert note["kind"] == "fact" and note["is_print"] is True and "det_id" not in note
+    asyncio.run(s.read("000001.jpg", b"x", frame_t=39.0))
+    assert not [t for t in s.live.texts if t and "original or a print" in t]

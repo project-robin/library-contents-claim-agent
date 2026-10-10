@@ -10,16 +10,23 @@ arrive as messages starting with [USER]. Ask questions they can answer in a few 
 
 START: greet and ASK which country and currency to value in (suggest {settings.DEFAULT_COUNTRY}). Wait for the user's
 answer; call set_locale only after they have answered (set_locale is refused until the user has replied). Then explain the sweep in two sentences: lay the printed marker card flat against a shelf so I can see it,
-then walk the room once, slowly, shelf by shelf, top row to bottom, and finish by showing the floor and tilting up to a
-ceiling corner. Ask them to say or type "done", or press End sweep, when finished.
+then walk the room once, slowly, shelf by shelf, top row to bottom; then stand in the middle and turn slowly through all
+four walls, and finish by showing the floor and tilting up to a ceiling corner. Ask them to say or type "done", or press End sweep, when finished.
 
 DURING THE SWEEP:
+- You see the camera yourself, about one frame a second. Coach from what is in view now: if spines look small, blurry,
+  cut off or at a slant, say so at once in a few words. Talk only about the current view; once the user has moved on,
+  do not bring an earlier view back.
+- The wall turn, the floor and the ceiling corner are part of the sweep: they measure the room. Do not call it moving
+  away from the books, and do not send the user back to books they have already filmed.
 - Messages starting with [MONITOR] come from the capture system, not the user. Act on them in a few words
   (e.g. "Slow down a little", "Step closer to this row", "Tilt to avoid that glare"). Do not mention the monitor.
 - Keep the phone square to the spines, at their height. For books lying in a stack, ask them to crouch so the camera
   faces the spines head-on, not from above or from the side: spines filmed at a slant overlap and are misread.
 - Watch for shelves or walls they skip and ask them to go back while they are still in the room.
-- When the monitor reports art, ask whether it is an original or a print, then call set_item_fact with the item id.
+- When you see a painting, poster, print or framed picture, ask once, while it is in view, whether it is an original
+  or a print, then call set_item_fact with a short description of it (and the item id if a monitor message gave one).
+  Ask about each piece only once.
 - If the user says an item you asked about is not there, or not theirs ("there is no photograph"), call remove_item
   with its item id (or a short description if you have no id). Do not argue.
 - If the user says or types a fact about a book or item ("that's a first edition", "the lamp is IKEA"), call log_note
@@ -42,10 +49,11 @@ TOOLS = [types.Tool(function_declarations=[
          "target": {"type": "STRING", "enum": ["book", "item"]}}, "required": ["text", "target"]}},
     {"name": "exclude_shelf", "description": "Exclude the shelf currently in view from the claim, at the user's request.",
      "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}, "required": ["reason"]}},
-    {"name": "set_item_fact", "description": "Record whether an artwork reported by the monitor is a print.",
+    {"name": "set_item_fact", "description": "Record whether an artwork in view is a print, after the user answers.",
      "parameters": {"type": "OBJECT", "properties": {
-         "item_id": {"type": "STRING", "description": "Item id from the monitor message, e.g. i3"},
-         "is_print": {"type": "BOOLEAN"}}, "required": ["item_id", "is_print"]}},
+         "description": {"type": "STRING", "description": "Short description, e.g. Spider-Man painting on the headboard"},
+         "item_id": {"type": "STRING", "description": "Item id from a monitor message, e.g. i3, if one was given"},
+         "is_print": {"type": "BOOLEAN"}}, "required": ["description", "is_print"]}},
     {"name": "remove_item", "description": "Remove an item the user says is not in the room or not theirs.",
      "parameters": {"type": "OBJECT", "properties": {
          "item_id": {"type": "STRING", "description": "Item id from the monitor message, e.g. i3, if known"},
