@@ -277,6 +277,33 @@ def test_same_book_folds_a_half_read_resolved_to_another_work():
     sita = _bk("Sita", (0.14, 0.42, 0.60), ori="flat", read="SITA WARRIOR OF MITHILA")
     out, folded, _ = books.same_book([oath, half, sita])
     assert out == [oath, sita] and folded == 1 and oath["views"] == 57
+    # shelf sweep 203017: Exam Warriors, named by its Marathi title, is not The Ship of Secrets beside it
+    ship = _bk("The Ship of Secrets", (0.5, 0.3, 0.12), views=41)
+    exam = _bk("एक्झाम वॉरियर्स", (0.5, 0.33, 0.12), read="EXAM WARRIORS")
+    assert books.same_book([ship, exam])[1] == 0
+
+
+def test_same_book_flat_pieces_and_crop_reader_alias():
+    """Demo sweep 5ced: a second box on the flat Othello, 1.3 cm along the spine and within its thickness, stayed a
+    line, unread or named by the crop reader 'William Shakespeare's Othello'. The book above it in the stack stays."""
+    oth = _bk("Othello", (0.156, 0.633, 0.567), h=15, t=2.5, ori="flat", views=31)
+    unread = _bk("", (0.144, 0.628, 0.576), h=12, t=2.4, ori="flat", views=8, read="")
+    above = _bk("", (0.156, 0.633, 0.592), h=15, t=2.5, ori="flat", read="")  # one thickness up the stack
+    out, folded, _ = books.same_book([oth, unread, above])
+    assert out == [oth, above] and folded == 1
+    named = _bk("William Shakespeare's Othello", (0.144, 0.628, 0.576), h=12, ori="flat", views=8, read="")
+    out, folded, _ = books.same_book([_bk("Othello", (0.156, 0.633, 0.567), ori="flat", views=31), named])
+    assert len(out) == 1 and folded == 1
+    # a garbled read no catalogue matched names one neighbour: part of it; an author shared by two neighbours is not
+    gates = {**_bk("Tom Gates: Family, Friends and Furry Creatures", (0.133, 0.397, 0.606), ori="flat", views=55),
+             "author": "Liz Pichon"}
+    garbled = _bk("", (0.144, 0.462, 0.608), h=7, ori="flat", read="TOM GATES FAMI FURR")
+    out, folded, _ = books.same_book([gates, garbled])
+    assert out == [gates] and folded == 1
+    sita, raavan = ({**_bk(t, c, ori="flat"), "author": "Amish Tripathi"} for t, c in
+                    (("Sita", (0.1, 0.4, 0.50)), ("Raavan", (0.1, 0.4, 0.53))))
+    amish = _bk("", (0.12, 0.45, 0.515), ori="flat", read="AMISH")
+    assert books.same_book([sita, raavan, amish])[1] == 0
 
 
 def test_pick_prefers_the_closest_edition_title_among_near_ties():

@@ -230,9 +230,9 @@ def same_book(books):
     """After identification, on 3D clusters. Pieces the merge pass could not join resolve to one catalogue book: SAM
     boxes the top or bottom of a tall upright spine on its own (another bottom height), and garbled reads ('THE OATH C
     THE VAYUPUTH') are not related() to the clean title. Same title within 15 cm, and within half the taller spine's
-    height (8 cm at least), is one book; an unread piece inside an identified spine (within 40% of its thickness across, and
-    within its height if upright or its thickness if flat) is part of it, and so is an unread piece within 15 cm whose
-    OCR names exactly one identified book ('FURRY FAMILY GATES', 'Aciman'). An unread box under 10 cm long is a piece
+    height (8 cm at least), is one book; an unidentified piece inside an identified spine (within 40% of its thickness
+    across, and within half its length along) is part of it, and so is an unidentified piece within 15 cm whose read or
+    OCR names exactly one identified book ('FURRY FAMILY GATES', 'Aciman', 'WILLIAM SHAKESPEARE'). An unread box under 10 cm long is a piece
     of some spine, not a book (spines are 14-32 cm). Views add up. Returns (kept, folded, fragments).
     Ceiling: two copies of one book side by side become one."""
     def near(a, b, title):
@@ -241,9 +241,14 @@ def same_book(books):
         tall = max(a["spine_height_cm"] or 0, b["spine_height_cm"] or 0) / 100
         if title:
             return dxy < 0.15 and dz <= max(0.08, tall / 2)
+        # a neighbour's centre sits a full thickness away; a piece of this spine sits within it. Upright: neighbours
+        # are along the shelf, pieces along the height. A flat piece of a flat spine: neighbours are above and below,
+        # pieces along the spine (sweep 5ced: a second Othello box 1.3 cm along the flat spine stayed a book)
+        across = min(0.025, 0.4 * (a["spine_thickness_cm"] or 0) / 100)
+        if a["orientation"] == b["orientation"] == "flat":
+            return dz < across and dxy <= (a["spine_height_cm"] or 0) / 200
         span = (a["spine_height_cm"] if a["orientation"] == "upright" else a["spine_thickness_cm"]) or 0
-        # a neighbour's centre sits a full thickness away; a piece of this spine sits within it
-        return dxy < min(0.025, 0.4 * (a["spine_thickness_cm"] or 0) / 100) and dz <= span / 200
+        return dxy < across and dz <= span / 200
     from pipeline.spine_ocr import same_work, supports, tokens  # imports this module
 
     def volumes_agree(a, b):  # a series' volumes can resolve to one catalogue title ('Volume 3', 'Volume 7')
@@ -254,16 +259,19 @@ def same_book(books):
     for b in sorted(books, key=lambda b: (bool(b["title"]), b["views"]), reverse=True):
         live = [k for k in kept if k["title"] and not k["excluded"] and not b["excluded"]]
         unread = not b["title"] and not b["spine_text"]["title"]
-        k = next((k for k in live if b["title"] and same_work(b["title"], k["title"]) and volumes_agree(k, b)
-                  and near(k, b, True)), None)
+        # the crop reader alone named it (no spine read): its 'William Shakespeare's Othello' is the Othello beside it
+        alias = lambda k: not b["spine_text"]["title"] and related(b["title"], k["title"])
+        k = next((k for k in live if b["title"] and (same_work(b["title"], k["title"]) or alias(k))
+                  and volumes_agree(k, b) and near(k, b, True)), None)
         read = b["spine_text"]["title"]
-        if k is None and b["title"] and titled(read):
+        if k is None and titled(b["title"]) and titled(read):  # titled(): a Devanagari title cannot be compared
             # a half-spine read ('THE OAT THE VAYUI') resolved to another work ('The Vayu Purana') next to the book it
             # is part of: the read fits the neighbour's title better than its own (sweep 5ced)
-            k = next((k for k in live if near(k, b, True) and sim(read, k["title"]) >= sim(read, b["title"]) + 0.2), None)
-        if unread:
+            k = next((k for k in live if near(k, b, True) and sim(read, k["title"]) >= max(0.6, sim(read, b["title"]) + 0.2)), None)
+        if not b["title"]:  # unread, or a garbled read no catalogue matched ('TOM GATES FAMI FURR', sweep 5ced)
             k = next((k for k in live if near(k, b, False)), None)
-            named = [k for k in live if near(k, b, True) and supports(f"{k['title']} {k['author']}", tokens(b["ocr_text"]))]
+            words = tokens(f"{b['ocr_text']} {read}")
+            named = [k for k in live if near(k, b, True) and supports(f"{k['title']} {k['author']}", words)]
             k = k or (named[0] if len(named) == 1 else None)
         if k is not None:
             k["views"] += b["views"]
