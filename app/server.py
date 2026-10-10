@@ -66,6 +66,7 @@ def warm_ocr():
 
 
 ART_GAP_S = 20  # at most one "original or print?" question per this many seconds
+MIN_SWEEP_S = 30  # end_sweep from the agent is refused before this, or before the user has said anything
 ART_WORDS = {"art", "artwork", "painting", "poster", "canvas", "print", "framed", "frame", "picture", "photo",
              "photograph", "wall", "panel", "above", "small", "large", "hanging", "leaning", "against"}
 
@@ -322,7 +323,7 @@ class Session:
             iid = f"i{len(self.items) + 1}"
             self.items.append({"id": iid, "category": it["category"], "description": it["description"],
                                "det_id": f"{name}:{k}"})
-            if it["category"] == "art":
+            if it["category"] == "art" and not self.ended:  # sweep 5ced: asked about a portrait after end_sweep, mic off
                 await self.monitor(f"New item {iid}: {it['description']}. Ask whether it is an original or a print, "
                                    f"then call set_item_fact with item_id {iid}.", force=True)
         await self.send_json({"type": "inventory", "books": list(self.books.values()),
@@ -369,8 +370,13 @@ class Session:
                                       "items": self.items, "unreadable_now": self.unreadable_now})
             res["removed"] = it["id"] if it else "recorded for review (no matching item seen yet)"
         elif name == "end_sweep":
-            res["status"] = "building the claim packet"
-            asyncio.create_task(self.finish())
+            # demo sweep d3d6: the agent greeted, then called end_sweep by itself 5 s in, before the user said anything
+            if not self.user_spoke or self.now() < MIN_SWEEP_S:
+                res = {"ok": False, "error": "the user has not finished: the sweep has only just started. Do not end "
+                                             "it until the user says or types that they are done."}
+            else:
+                res["status"] = "building the claim packet"
+                asyncio.create_task(self.finish())
         await self.send_json({"type": "tool", "name": name, "args": a, "result": res})
         try:
             await self.live.send_tool_response(function_responses=[types.FunctionResponse(id=fc.id, name=name, response=res)])
