@@ -257,3 +257,10 @@ The tester then repeated the bedroom.
    - it asks "original or print?" about art it sees, and `set_item_fact` takes a description; the items stage gives
      the answer to the art line sharing a distinctive word. A later frame read of the same piece does not ask again.
    Checked on a real Live session: told about a framed Spider-Man print, it called set_item_fact with a description.
+4. **The server was killed mid-packet** (sweep `152219-117d`, 4 min 26 s, 795 frames). The recon stage decoded all
+   321 keyframes at full resolution before choosing the 150 it sends: 2.0 GB. With a browser open on the 6 GB
+   machine, systemd-oomd killed the terminal's whole process group, the server included, and the phone never got its
+   packet. Recon now reads frame sizes from the JPEG headers and decodes only the frames it sends, one at a time:
+   rebuild peak 683 MB (it was over 3.5 GB with swap). The server now runs as its own systemd user unit.
+   Rebuilt offline: 12/12 books, items 12/14, floor 9.74 vs 9.29 m²; no prices (the Serper account had run out of
+   credits).

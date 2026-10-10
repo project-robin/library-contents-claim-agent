@@ -13,6 +13,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from pipeline import books, frames, geometry, items, metrics, packet, pricing, review, sam, settings, vision
 from pipeline.contract import ClaimPacket
@@ -101,14 +102,16 @@ def segment_spines(sd, kfs, log=print):
 def recon(sd, kfs):
     from gpu.modal_recon import remote  # imported lazily: only this stage needs Modal
 
-    imgs = {k["frame"]: cv2.imread(str(sd / "frames" / k["frame"])) for k in kfs}
-    size = Counter((im.shape[1], im.shape[0]) for im in imgs.values()).most_common(1)[0][0]
+    # sizes from the JPEG headers, and only the frames sent are decoded, one at a time: sweep 117d had 321 keyframes,
+    # 2.0 GB decoded at once, and the out-of-memory killer took the server down mid-packet
+    sizes = {k["frame"]: Image.open(sd / "frames" / k["frame"]).size for k in kfs}
+    size = Counter(sizes.values()).most_common(1)[0][0]
     # ponytail: frames from a different phone orientation are left out of 3D (still read for text)
-    names = [f for f, im in imgs.items() if (im.shape[1], im.shape[0]) == size]
+    names = [f for f, wh in sizes.items() if wh == size]
     if len(names) > settings.MAX_RECON_FRAMES:
         names = [names[int(i)] for i in np.linspace(0, len(names) - 1, settings.MAX_RECON_FRAMES)]
     gw, gh = geometry.recon_size(*size)
-    jpegs = [cv2.imencode(".jpg", cv2.resize(imgs[f], (gw, gh), interpolation=cv2.INTER_AREA),
+    jpegs = [cv2.imencode(".jpg", cv2.resize(cv2.imread(str(sd / "frames" / f)), (gw, gh), interpolation=cv2.INTER_AREA),
                           [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes() for f in names]
     t0 = time.perf_counter()
     z = np.load(io.BytesIO(remote(settings.RECON_MODEL).run.remote(jpegs)))
